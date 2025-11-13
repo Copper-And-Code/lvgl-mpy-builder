@@ -1,0 +1,155 @@
+.event-editor {
+  margin-top: 20px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.event-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: #f5f5f5;
+  cursor: pointer;
+  user-select: none;
+}
+
+.event-header:hover {
+  background: #ececec;
+}
+
+.event-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.expand-icon {
+  font-size: 12px;
+  color: #666;
+}
+
+.event-content {
+  padding: 12px;
+  background: white;
+}
+
+.btn-add-event {
+  width: 100%;
+  padding: 8px 12px;
+  background: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.btn-add-event:hover {
+  background: #1976D2;
+}
+
+.events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.event-item {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 12px;
+  background: #fafafa;
+}
+
+.event-item-header {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.event-type-select {
+  flex: 1;
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  background: white;
+}
+
+.btn-delete-event {
+  width: 28px;
+  height: 28px;
+  background: #f44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-delete-event:hover {
+  background: #d32f2f;
+}
+
+.event-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.event-details .property-field {
+  margin: 0;
+}
+
+.event-details label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: #666;
+}
+
+.event-details input,
+.event-details textarea {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: 'Courier New', monospace;
+  box-sizing: border-box;
+}
+
+.event-details textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.btn-toggle-code {
+  padding: 6px 12px;
+  background: #757575;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  align-self: flex-start;
+}
+
+.btn-toggle-code:hover {
+  background: #616161;
+}
+
+.no-events {
+  text-align: center;
+  color: #999;
+  font-size: 13px;
+  padding: 20px;
+  margin: 0;
+}

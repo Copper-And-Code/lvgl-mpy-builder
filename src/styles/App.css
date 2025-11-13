@@ -108,13 +108,33 @@
   width: 250px;
   background: white;
   border-right: 1px solid #ddd;
-  overflow-y: auto;
   flex-shrink: 0;
+}
+
+.left-sidebar {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.left-sidebar-top {
+  flex: 0 0 auto;
+  max-height: 50%;
+  overflow-y: auto;
+  border-bottom: 1px solid #ddd;
+}
+
+.left-sidebar-bottom {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .right-sidebar {
   border-right: none;
   border-left: 1px solid #ddd;
+  overflow-y: auto;
 }
 
 /* Canvas Area */

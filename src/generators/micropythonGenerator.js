@@ -20,15 +20,77 @@ function sanitizeIdentifier(name) {
   return name.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
 }
 
-function generateWidgetCode(widget, indent = '    ') {
-  const { id, type, name, props } = widget;
+function getWidgetParentVarName(widget, widgets) {
+  if (!widget.parentId) {
+    return 'parent';
+  }
+  const parentWidget = widgets.find(w => w.id === widget.parentId);
+  return parentWidget ? sanitizeIdentifier(parentWidget.name) : 'parent';
+}
+
+function generateAnimationCode(widget, animation, indent = '    ') {
+  const varName = sanitizeIdentifier(widget.name);
+  const animVarName = `${varName}_anim_${animation.id.slice(-4)}`;
+  const lines = [];
+
+  lines.push(`${indent}# Animation: ${animation.type}`);
+  lines.push(`${indent}${animVarName} = lv.anim_t()`);
+  lines.push(`${indent}${animVarName}.init()`);
+  lines.push(`${indent}${animVarName}.set_var(${varName})`);
+  lines.push(`${indent}${animVarName}.set_time(${animation.duration})`);
+  lines.push(`${indent}${animVarName}.set_delay(${animation.delay})`);
+
+  if (animation.repeat > 0) {
+    lines.push(`${indent}${animVarName}.set_repeat_count(${animation.repeat})`);
+  }
+
+  if (animation.playback) {
+    lines.push(`${indent}${animVarName}.set_playback_time(${animation.duration})`);
+  }
+
+  lines.push(`${indent}${animVarName}.set_values(${animation.startValue}, ${animation.endValue})`);
+
+  // Convert path name to Python style
+  const pathName = animation.path.replace('lv_anim_path_', '');
+  lines.push(`${indent}${animVarName}.set_path_cb(lv.anim_t.path_${pathName})`);
+
+  // Set appropriate setter function based on animation type
+  switch (animation.type) {
+    case 'move_x':
+      lines.push(`${indent}${animVarName}.set_exec_cb(${varName}, lv.anim_t.set_x)`);
+      break;
+    case 'move_y':
+      lines.push(`${indent}${animVarName}.set_exec_cb(${varName}, lv.anim_t.set_y)`);
+      break;
+    case 'width':
+      lines.push(`${indent}${animVarName}.set_exec_cb(${varName}, lv.anim_t.set_width)`);
+      break;
+    case 'height':
+      lines.push(`${indent}${animVarName}.set_exec_cb(${varName}, lv.anim_t.set_height)`);
+      break;
+    case 'fade_in':
+    case 'fade_out':
+      lines.push(`${indent}${animVarName}.set_exec_cb(${varName}, lv.anim_t.set_opa)`);
+      break;
+    default:
+      lines.push(`${indent}# Custom animation type: ${animation.type}`);
+  }
+
+  lines.push(`${indent}lv.anim_t.start(${animVarName})`);
+
+  return lines.join('\n');
+}
+
+function generateWidgetCode(widget, widgets, indent = '    ') {
+  const { id, type, name, props, events, animations } = widget;
   const varName = sanitizeIdentifier(name);
+  const parentVar = getWidgetParentVarName(widget, widgets);
   const lines = [];
 
   switch (type) {
     case 'button': {
       lines.push(`${indent}# Create button: ${name}`);
-      lines.push(`${indent}${varName} = lv.btn(parent)`);
+      lines.push(`${indent}${varName} = lv.btn(${parentVar})`);
       lines.push(`${indent}${varName}.set_pos(${props.x}, ${props.y})`);
       lines.push(`${indent}${varName}.set_size(${props.width}, ${props.height})`);
 
@@ -55,7 +117,7 @@ function generateWidgetCode(widget, indent = '    ') {
 
     case 'label': {
       lines.push(`${indent}# Create label: ${name}`);
-      lines.push(`${indent}${varName} = lv.label(parent)`);
+      lines.push(`${indent}${varName} = lv.label(${parentVar})`);
       lines.push(`${indent}${varName}.set_pos(${props.x}, ${props.y})`);
       lines.push(`${indent}${varName}.set_text("${props.text || 'Label'}")`);
 
@@ -71,7 +133,7 @@ function generateWidgetCode(widget, indent = '    ') {
 
     case 'slider': {
       lines.push(`${indent}# Create slider: ${name}`);
-      lines.push(`${indent}${varName} = lv.slider(parent)`);
+      lines.push(`${indent}${varName} = lv.slider(${parentVar})`);
       lines.push(`${indent}${varName}.set_pos(${props.x}, ${props.y})`);
       lines.push(`${indent}${varName}.set_size(${props.width}, ${props.height})`);
       lines.push(`${indent}${varName}.set_range(${props.min || 0}, ${props.max || 100})`);
@@ -85,7 +147,7 @@ function generateWidgetCode(widget, indent = '    ') {
 
     case 'switch': {
       lines.push(`${indent}# Create switch: ${name}`);
-      lines.push(`${indent}${varName} = lv.switch(parent)`);
+      lines.push(`${indent}${varName} = lv.switch(${parentVar})`);
       lines.push(`${indent}${varName}.set_pos(${props.x}, ${props.y})`);
       lines.push(`${indent}${varName}.set_size(${props.width}, ${props.height})`);
 
@@ -97,7 +159,7 @@ function generateWidgetCode(widget, indent = '    ') {
 
     case 'checkbox': {
       lines.push(`${indent}# Create checkbox: ${name}`);
-      lines.push(`${indent}${varName} = lv.checkbox(parent)`);
+      lines.push(`${indent}${varName} = lv.checkbox(${parentVar})`);
       lines.push(`${indent}${varName}.set_pos(${props.x}, ${props.y})`);
       lines.push(`${indent}${varName}.set_text("${props.text || 'Checkbox'}")`);
 
@@ -109,7 +171,7 @@ function generateWidgetCode(widget, indent = '    ') {
 
     case 'textarea': {
       lines.push(`${indent}# Create textarea: ${name}`);
-      lines.push(`${indent}${varName} = lv.textarea(parent)`);
+      lines.push(`${indent}${varName} = lv.textarea(${parentVar})`);
       lines.push(`${indent}${varName}.set_pos(${props.x}, ${props.y})`);
       lines.push(`${indent}${varName}.set_size(${props.width}, ${props.height})`);
       lines.push(`${indent}${varName}.set_text("${props.text || ''}")`);
@@ -122,7 +184,7 @@ function generateWidgetCode(widget, indent = '    ') {
 
     case 'panel': {
       lines.push(`${indent}# Create panel: ${name}`);
-      lines.push(`${indent}${varName} = lv.obj(parent)`);
+      lines.push(`${indent}${varName} = lv.obj(${parentVar})`);
       lines.push(`${indent}${varName}.set_pos(${props.x}, ${props.y})`);
       lines.push(`${indent}${varName}.set_size(${props.width}, ${props.height})`);
 
@@ -146,7 +208,7 @@ function generateWidgetCode(widget, indent = '    ') {
 
     case 'bar': {
       lines.push(`${indent}# Create progress bar: ${name}`);
-      lines.push(`${indent}${varName} = lv.bar(parent)`);
+      lines.push(`${indent}${varName} = lv.bar(${parentVar})`);
       lines.push(`${indent}${varName}.set_pos(${props.x}, ${props.y})`);
       lines.push(`${indent}${varName}.set_size(${props.width}, ${props.height})`);
       lines.push(`${indent}${varName}.set_range(${props.min || 0}, ${props.max || 100})`);
@@ -160,7 +222,7 @@ function generateWidgetCode(widget, indent = '    ') {
 
     case 'arc': {
       lines.push(`${indent}# Create arc: ${name}`);
-      lines.push(`${indent}${varName} = lv.arc(parent)`);
+      lines.push(`${indent}${varName} = lv.arc(${parentVar})`);
       lines.push(`${indent}${varName}.set_pos(${props.x}, ${props.y})`);
       lines.push(`${indent}${varName}.set_size(${props.width}, ${props.height})`);
       lines.push(`${indent}${varName}.set_range(${props.min || 0}, ${props.max || 100})`);
@@ -184,13 +246,51 @@ function generateWidgetCode(widget, indent = '    ') {
       lines.push(`${indent}# Unknown widget type: ${type}`);
   }
 
+  // Add event handlers
+  if (events && events.length > 0) {
+    events.forEach((event) => {
+      const eventType = event.type.replace('LV_EVENT_', '').toUpperCase();
+      lines.push(`${indent}${varName}.add_event_cb(${sanitizeIdentifier(event.callback)}, lv.EVENT.${eventType}, None)`);
+    });
+  }
+
   lines.push('');
+
+  // Add animations
+  if (animations && animations.length > 0) {
+    animations.forEach((animation) => {
+      lines.push(generateAnimationCode(widget, animation, indent));
+      lines.push('');
+    });
+  }
+
   return lines.join('\n');
 }
 
 export function generateMicroPythonCode(projectData) {
   const { projectName, widgets, canvasSize } = projectData;
   const functionName = sanitizeIdentifier(projectName || 'ui') + '_create';
+
+  // Sort widgets to ensure parents are created before children
+  const sortedWidgets = [...widgets].sort((a, b) => {
+    if (!a.parentId && b.parentId) return -1;
+    if (a.parentId && !b.parentId) return 1;
+    return 0;
+  });
+
+  // Collect all unique event callbacks
+  const eventCallbacks = new Set();
+  sortedWidgets.forEach((widget) => {
+    if (widget.events && widget.events.length > 0) {
+      widget.events.forEach((event) => {
+        eventCallbacks.add({
+          name: sanitizeIdentifier(event.callback),
+          type: event.type,
+          code: event.code || '# TODO: Implement event handler'
+        });
+      });
+    }
+  });
 
   let code = `"""
 Auto-generated LVGL UI Code for MicroPython
@@ -201,7 +301,26 @@ Display Size: ${canvasSize.width}x${canvasSize.height}
 
 import lvgl as lv
 
-def ${functionName}(parent=None):
+`;
+
+  // Generate event callback implementations
+  if (eventCallbacks.size > 0) {
+    code += `# Event callback implementations\n`;
+    Array.from(eventCallbacks).forEach((callback) => {
+      const eventType = callback.type.replace('LV_EVENT_', '').toUpperCase();
+      code += `def ${callback.name}(e):
+    """Event handler for ${callback.type}"""
+    code = e.get_code()
+    obj = e.get_target()
+
+    if code == lv.EVENT.${eventType}:
+        ${callback.code}
+
+`;
+    });
+  }
+
+  code += `def ${functionName}(parent=None):
     """
     Create the UI for ${projectName}
 
@@ -214,8 +333,8 @@ def ${functionName}(parent=None):
 `;
 
   // Generate code for each widget
-  widgets.forEach((widget) => {
-    code += generateWidgetCode(widget, '    ');
+  sortedWidgets.forEach((widget) => {
+    code += generateWidgetCode(widget, sortedWidgets, '    ');
   });
 
   code += `

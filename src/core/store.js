@@ -56,6 +56,42 @@ const useStore = create((set, get) => ({
     get().saveHistory();
   },
 
+  updateWidgetEvents: (id, events) => {
+    set((state) => ({
+      widgets: state.widgets.map((w) =>
+        w.id === id ? { ...w, events } : w
+      ),
+    }));
+    get().saveHistory();
+  },
+
+  updateWidgetAnimations: (id, animations) => {
+    set((state) => ({
+      widgets: state.widgets.map((w) =>
+        w.id === id ? { ...w, animations: animations || [] } : w
+      ),
+    }));
+    get().saveHistory();
+  },
+
+  updateWidgetParent: (id, parentId) => {
+    set((state) => ({
+      widgets: state.widgets.map((w) =>
+        w.id === id ? { ...w, parentId: parentId || null } : w
+      ),
+    }));
+    get().saveHistory();
+  },
+
+  updateWidgetStyles: (id, styles) => {
+    set((state) => ({
+      widgets: state.widgets.map((w) =>
+        w.id === id ? { ...w, customStyles: styles || {} } : w
+      ),
+    }));
+    get().saveHistory();
+  },
+
   deleteWidget: (id) => {
     set((state) => ({
       widgets: state.widgets.filter((w) => w.id !== id),
@@ -168,7 +204,7 @@ const useStore = create((set, get) => ({
       projectName: state.projectName,
       widgets: state.widgets,
       canvasSize: state.canvasSize,
-      version: '1.0.0',
+      version: '1.1.0',
       createdAt: new Date().toISOString(),
     };
   },
