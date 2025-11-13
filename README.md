@@ -163,16 +163,16 @@ def my_ui_create(parent=None):
 - [x] Sistema di proprietà
 - [x] Export codice
 
-### v1.1
-- [ ] Event handlers
-- [ ] Animations
-- [ ] Custom styles
-- [ ] Widget hierarchy (parent-child)
+### v1.1 ✅
+- [x] Event handlers
+- [x] Animations
+- [x] Custom styles
+- [x] Widget hierarchy (parent-child)
 
-### v1.2
-- [ ] Multi-page support
-- [ ] Screen templates
-- [ ] Asset management (images, fonts)
+### v1.2 ✅
+- [x] Multi-page support
+- [x] Screen templates
+- [x] Asset management (images, fonts)
 - [ ] Preview sul dispositivo reale
 
 ### v2.0
