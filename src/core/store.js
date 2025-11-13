@@ -24,6 +24,9 @@ const useStore = create((set, get) => ({
     fonts: [],  // { id, name, path, size }
   },
 
+  // Component Library (v2.0)
+  componentLibrary: [], // { id, name, description, widgets, thumbnail, tags, createdAt }
+
   // Canvas state
   widgets: [],
   selectedWidgetId: null,
@@ -329,9 +332,128 @@ const useStore = create((set, get) => ({
     return assets.find(a => a.id === assetId);
   },
 
+  // Component Library management (v2.0)
+  saveAsComponent: (name, description, tags = []) => {
+    const state = get();
+    const selectedWidget = state.widgets.find(w => w.id === state.selectedWidgetId);
+
+    if (!selectedWidget) {
+      alert('Please select a widget to save as component');
+      return;
+    }
+
+    // Get selected widget and all its children
+    const getWidgetWithChildren = (widgetId) => {
+      const widget = state.widgets.find(w => w.id === widgetId);
+      if (!widget) return [];
+
+      const children = state.widgets.filter(w => w.parentId === widgetId);
+      const allWidgets = [widget];
+
+      children.forEach(child => {
+        allWidgets.push(...getWidgetWithChildren(child.id));
+      });
+
+      return allWidgets;
+    };
+
+    const componentWidgets = getWidgetWithChildren(selectedWidget.id);
+
+    const component = {
+      id: uuidv4(),
+      name: name || `Component ${state.componentLibrary.length + 1}`,
+      description: description || '',
+      widgets: componentWidgets,
+      tags: tags || [],
+      createdAt: new Date().toISOString(),
+    };
+
+    set((state) => ({
+      componentLibrary: [...state.componentLibrary, component],
+    }));
+
+    return component.id;
+  },
+
+  deleteComponent: (componentId) => {
+    set((state) => ({
+      componentLibrary: state.componentLibrary.filter(c => c.id !== componentId),
+    }));
+  },
+
+  insertComponent: (componentId, position) => {
+    const component = get().componentLibrary.find(c => c.id === componentId);
+    if (!component) return;
+
+    // Generate new IDs for all widgets in the component
+    const idMap = new Map();
+    component.widgets.forEach(widget => {
+      idMap.set(widget.id, uuidv4());
+    });
+
+    // Calculate offset based on position
+    const minX = Math.min(...component.widgets.map(w => w.props.x));
+    const minY = Math.min(...component.widgets.map(w => w.props.y));
+    const offsetX = (position?.x || 0) - minX;
+    const offsetY = (position?.y || 0) - minY;
+
+    // Clone widgets with new IDs and adjusted positions
+    const newWidgets = component.widgets.map(widget => {
+      const newId = idMap.get(widget.id);
+      const newParentId = widget.parentId ? idMap.get(widget.parentId) : null;
+
+      return {
+        ...widget,
+        id: newId,
+        parentId: newParentId,
+        name: `${widget.name}_${Date.now()}`,
+        props: {
+          ...widget.props,
+          x: widget.props.x + offsetX,
+          y: widget.props.y + offsetY,
+        },
+      };
+    });
+
+    set((state) => ({
+      widgets: [...state.widgets, ...newWidgets],
+      selectedWidgetId: newWidgets[0].id,
+    }));
+
+    get().saveHistory();
+  },
+
+  updateComponent: (componentId, updates) => {
+    set((state) => ({
+      componentLibrary: state.componentLibrary.map(c =>
+        c.id === componentId ? { ...c, ...updates } : c
+      ),
+    }));
+  },
+
+  exportComponentLibrary: () => {
+    const state = get();
+    return {
+      components: state.componentLibrary,
+      version: '2.0.0',
+      exportedAt: new Date().toISOString(),
+    };
+  },
+
+  importComponentLibrary: (data) => {
+    if (!data.components || !Array.isArray(data.components)) {
+      alert('Invalid component library format');
+      return;
+    }
+
+    set((state) => ({
+      componentLibrary: [...state.componentLibrary, ...data.components],
+    }));
+  },
+
   // Project operations
   loadProject: (projectData) => {
-    // Support for v1.2 multi-page format
+    // Support for v2.0+ multi-page format with component library
     if (projectData.pages) {
       const firstPage = projectData.pages[0];
       set({
@@ -341,6 +463,7 @@ const useStore = create((set, get) => ({
         widgets: firstPage.widgets || [],
         canvasSize: firstPage.canvasSize || { width: 800, height: 480 },
         assets: projectData.assets || { images: [], fonts: [] },
+        componentLibrary: projectData.componentLibrary || [],
         selectedWidgetId: null,
         history: [],
         historyIndex: -1,
@@ -359,6 +482,7 @@ const useStore = create((set, get) => ({
         widgets: projectData.widgets || [],
         canvasSize: projectData.canvasSize || { width: 800, height: 480 },
         assets: { images: [], fonts: [] },
+        componentLibrary: [],
         selectedWidgetId: null,
         history: [],
         historyIndex: -1,
@@ -377,7 +501,8 @@ const useStore = create((set, get) => ({
       pages: state.pages,
       currentPageId: state.currentPageId,
       assets: state.assets,
-      version: '1.2.0',
+      componentLibrary: state.componentLibrary,
+      version: '2.0.0',
       createdAt: new Date().toISOString(),
     };
   },
@@ -395,6 +520,7 @@ const useStore = create((set, get) => ({
       currentPageId: 'page_1',
       widgets: [],
       assets: { images: [], fonts: [] },
+      componentLibrary: [],
       selectedWidgetId: null,
       history: [],
       historyIndex: -1,

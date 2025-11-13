@@ -5,6 +5,10 @@ import HierarchyPanel from './components/HierarchyPanel';
 import PageManager from './components/PageManager';
 import Canvas from './components/Canvas';
 import PropertiesPanel from './components/PropertiesPanel';
+import ComponentLibrary from './components/ComponentLibrary';
+import PluginManager from './components/PluginManager';
+import CloudSyncPanel from './components/CloudSync';
+import CollaborationPanel from './components/CollaborationPanel';
 import './styles/App.css';
 
 function App() {
@@ -34,8 +38,13 @@ function App() {
         </aside>
       </div>
 
+      <ComponentLibrary />
+      <CloudSyncPanel />
+      <CollaborationPanel />
+      <PluginManager />
+
       <footer className="status-bar">
-        <span>LVGL Visual Editor v1.2.0</span>
+        <span>LVGL Visual Editor v2.0.0</span>
         <span>Ready</span>
       </footer>
     </div>

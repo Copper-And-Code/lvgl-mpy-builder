@@ -175,11 +175,94 @@ def my_ui_create(parent=None):
 - [x] Asset management (images, fonts)
 - [ ] Preview sul dispositivo reale
 
-### v2.0
-- [ ] Collaborative editing
-- [ ] Component library
-- [ ] Plugin system
-- [ ] Cloud sync
+### v2.0 ✅
+- [x] Collaborative editing
+- [x] Component library
+- [x] Plugin system
+- [x] Cloud sync
+
+## Funzionalità v2.0
+
+### 🧩 Component Library
+La libreria di componenti permette di salvare e riutilizzare gruppi di widget come componenti personalizzati:
+
+- **Salva Componenti**: Seleziona widget (con relativi figli) e salvali come componente riutilizzabile
+- **Gestione Libreria**: Organizza i componenti con nome, descrizione e tag
+- **Import/Export**: Condividi la tua libreria di componenti con altri utenti
+- **Ricerca**: Trova rapidamente i componenti per nome, descrizione o tag
+
+**Come usare:**
+1. Seleziona un widget sul canvas
+2. Clicca sul pulsante floating "Component Library" (in basso a sinistra)
+3. Clicca "Save Component" e inserisci i dettagli
+4. Per inserire un componente, clicca su "+" accanto al componente desiderato
+
+### 🔌 Plugin System
+Sistema estensibile per caricare plugin esterni che aggiungono nuove funzionalità:
+
+- **Caricamento Plugin**: Carica plugin da URL o codice JavaScript
+- **Custom Widgets**: I plugin possono aggiungere nuovi tipi di widget
+- **Custom Generators**: Aggiungi supporto per nuovi linguaggi di output
+- **Hook System**: I plugin possono intercettare eventi dell'editor
+- **Gestione Plugin**: Abilita/disabilita plugin dinamicamente
+
+**Struttura Plugin:**
+```javascript
+module.exports.default = {
+  id: 'my-plugin',
+  name: 'My Plugin',
+  version: '1.0.0',
+  description: 'Plugin description',
+
+  initialize() {
+    // Setup code
+  },
+
+  hooks: {
+    'widget:created': (widget) => {
+      // Called when a widget is created
+      return widget;
+    }
+  },
+
+  widgets: [
+    // Custom widget definitions
+  ],
+
+  generators: [
+    // Custom code generators
+  ]
+};
+```
+
+### ☁️ Cloud Sync
+Sincronizza i tuoi progetti con il cloud per accedervi da qualsiasi dispositivo:
+
+- **Provider Multipli**: Supporto per diversi provider cloud (Local Storage incluso)
+- **Auto-Sync**: Sincronizzazione automatica ogni 5 minuti (opzionale)
+- **Gestione Progetti**: Lista, carica ed elimina progetti dal cloud
+- **Backup Automatico**: Salvataggio automatico per non perdere il lavoro
+
+**Provider Disponibili:**
+- Local Storage (demo/offline)
+- Custom providers via API
+
+### 👥 Collaborative Editing
+Lavora sui progetti in tempo reale con altri utenti:
+
+- **Sessioni Multi-Utente**: Crea o unisciti a sessioni collaborative
+- **Real-Time Sync**: Vedi le modifiche degli altri utenti in tempo reale
+- **User Awareness**: Visualizza chi è connesso con colori distintivi
+- **Cursor Tracking**: Vedi dove stanno lavorando gli altri utenti
+- **Conflict Resolution**: Sistema di gestione conflitti automatico
+
+**Come iniziare:**
+1. Clicca sul pulsante "Collaboration" (in basso a destra)
+2. Scegli "Join Session"
+3. Inserisci server URL e session ID (o generane uno nuovo)
+4. Condividi il session ID con i collaboratori
+
+**Nota:** Per la collaborazione in tempo reale è necessario un server WebSocket. La versione attuale include un'implementazione demo per sviluppo locale.
 
 ## Contribuire
 

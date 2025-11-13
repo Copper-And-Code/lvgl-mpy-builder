@@ -1,0 +1,228 @@
+import React, { useState } from 'react';
+import useStore from '../core/store';
+import { Package, Plus, Trash2, Download, Upload, Search, Tag } from 'lucide-react';
+import '../styles/ComponentLibrary.css';
+
+export default function ComponentLibrary() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [componentName, setComponentName] = useState('');
+  const [componentDescription, setComponentDescription] = useState('');
+  const [componentTags, setComponentTags] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const componentLibrary = useStore((state) => state.componentLibrary);
+  const saveAsComponent = useStore((state) => state.saveAsComponent);
+  const deleteComponent = useStore((state) => state.deleteComponent);
+  const insertComponent = useStore((state) => state.insertComponent);
+  const exportComponentLibrary = useStore((state) => state.exportComponentLibrary);
+  const importComponentLibrary = useStore((state) => state.importComponentLibrary);
+  const selectedWidgetId = useStore((state) => state.selectedWidgetId);
+
+  const handleSaveComponent = () => {
+    if (!componentName.trim()) {
+      alert('Please enter a component name');
+      return;
+    }
+
+    const tags = componentTags.split(',').map(t => t.trim()).filter(t => t);
+    saveAsComponent(componentName, componentDescription, tags);
+
+    setComponentName('');
+    setComponentDescription('');
+    setComponentTags('');
+    setShowSaveDialog(false);
+  };
+
+  const handleInsertComponent = (componentId) => {
+    insertComponent(componentId, { x: 50, y: 50 });
+  };
+
+  const handleExportLibrary = () => {
+    const data = exportComponentLibrary();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'component-library.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportLibrary = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        importComponentLibrary(data);
+      } catch (err) {
+        alert('Invalid component library file');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const filteredComponents = componentLibrary.filter(component => {
+    const query = searchQuery.toLowerCase();
+    return (
+      component.name.toLowerCase().includes(query) ||
+      component.description.toLowerCase().includes(query) ||
+      component.tags.some(tag => tag.toLowerCase().includes(query))
+    );
+  });
+
+  return (
+    <>
+      <button
+        className="component-library-toggle"
+        onClick={() => setIsOpen(!isOpen)}
+        title="Component Library"
+      >
+        <Package size={20} />
+      </button>
+
+      {isOpen && (
+        <div className="component-library-panel">
+          <div className="component-library-header">
+            <h3>
+              <Package size={18} />
+              Component Library
+            </h3>
+            <button onClick={() => setIsOpen(false)}>×</button>
+          </div>
+
+          <div className="component-library-toolbar">
+            <button
+              onClick={() => setShowSaveDialog(true)}
+              disabled={!selectedWidgetId}
+              title="Save selected widget as component"
+            >
+              <Plus size={16} />
+              Save Component
+            </button>
+            <button onClick={handleExportLibrary} title="Export library">
+              <Download size={16} />
+            </button>
+            <label className="import-button" title="Import library">
+              <Upload size={16} />
+              <input
+                type="file"
+                accept=".json"
+                onChange={handleImportLibrary}
+                style={{ display: 'none' }}
+              />
+            </label>
+          </div>
+
+          <div className="component-search">
+            <Search size={16} />
+            <input
+              type="text"
+              placeholder="Search components..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          <div className="component-list">
+            {filteredComponents.length === 0 ? (
+              <div className="component-empty">
+                <p>No components yet</p>
+                <p>Select a widget and click "Save Component"</p>
+              </div>
+            ) : (
+              filteredComponents.map((component) => (
+                <div key={component.id} className="component-item">
+                  <div className="component-info">
+                    <h4>{component.name}</h4>
+                    {component.description && (
+                      <p className="component-description">{component.description}</p>
+                    )}
+                    {component.tags.length > 0 && (
+                      <div className="component-tags">
+                        {component.tags.map((tag, idx) => (
+                          <span key={idx} className="component-tag">
+                            <Tag size={12} />
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="component-meta">
+                      {component.widgets.length} widget{component.widgets.length !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+                  <div className="component-actions">
+                    <button
+                      onClick={() => handleInsertComponent(component.id)}
+                      title="Insert component"
+                      className="btn-insert"
+                    >
+                      <Plus size={16} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Delete component "${component.name}"?`)) {
+                          deleteComponent(component.id);
+                        }
+                      }}
+                      title="Delete component"
+                      className="btn-delete"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {showSaveDialog && (
+        <div className="component-save-dialog-overlay">
+          <div className="component-save-dialog">
+            <h3>Save as Component</h3>
+            <div className="form-group">
+              <label>Name *</label>
+              <input
+                type="text"
+                value={componentName}
+                onChange={(e) => setComponentName(e.target.value)}
+                placeholder="My Component"
+                autoFocus
+              />
+            </div>
+            <div className="form-group">
+              <label>Description</label>
+              <textarea
+                value={componentDescription}
+                onChange={(e) => setComponentDescription(e.target.value)}
+                placeholder="Describe what this component does..."
+                rows={3}
+              />
+            </div>
+            <div className="form-group">
+              <label>Tags (comma-separated)</label>
+              <input
+                type="text"
+                value={componentTags}
+                onChange={(e) => setComponentTags(e.target.value)}
+                placeholder="button, ui, navigation"
+              />
+            </div>
+            <div className="dialog-actions">
+              <button onClick={() => setShowSaveDialog(false)}>Cancel</button>
+              <button onClick={handleSaveComponent} className="btn-primary">
+                Save Component
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
