@@ -7,6 +7,23 @@ const useStore = create((set, get) => ({
   projectName: 'Untitled Project',
   projectPath: null,
 
+  // Multi-page support (v1.2)
+  pages: [
+    {
+      id: 'page_1',
+      name: 'Main Screen',
+      widgets: [],
+      canvasSize: { width: 800, height: 480 },
+    }
+  ],
+  currentPageId: 'page_1',
+
+  // Assets management (v1.2)
+  assets: {
+    images: [], // { id, name, path, data }
+    fonts: [],  // { id, name, path, size }
+  },
+
   // Canvas state
   widgets: [],
   selectedWidgetId: null,
@@ -185,26 +202,182 @@ const useStore = create((set, get) => ({
     }
   },
 
+  // Page management (v1.2)
+  addPage: (name) => {
+    const id = `page_${uuidv4()}`;
+    const newPage = {
+      id,
+      name: name || `Page ${get().pages.length + 1}`,
+      widgets: [],
+      canvasSize: { width: 800, height: 480 },
+    };
+
+    set((state) => ({
+      pages: [...state.pages, newPage],
+      currentPageId: id,
+    }));
+  },
+
+  deletePage: (pageId) => {
+    const state = get();
+    if (state.pages.length <= 1) {
+      alert('Cannot delete the last page');
+      return;
+    }
+
+    const pageIndex = state.pages.findIndex(p => p.id === pageId);
+    if (pageIndex === -1) return;
+
+    const newPages = state.pages.filter(p => p.id !== pageId);
+    let newCurrentPageId = state.currentPageId;
+
+    if (pageId === state.currentPageId) {
+      newCurrentPageId = pageIndex > 0 ? newPages[pageIndex - 1].id : newPages[0].id;
+    }
+
+    set({
+      pages: newPages,
+      currentPageId: newCurrentPageId,
+    });
+
+    get().loadPageWidgets(newCurrentPageId);
+  },
+
+  renamePage: (pageId, newName) => {
+    set((state) => ({
+      pages: state.pages.map(p =>
+        p.id === pageId ? { ...p, name: newName } : p
+      ),
+    }));
+  },
+
+  switchPage: (pageId) => {
+    // Save current page state
+    const currentPage = get().pages.find(p => p.id === get().currentPageId);
+    if (currentPage) {
+      get().savePageWidgets();
+    }
+
+    // Load new page
+    set({ currentPageId: pageId });
+    get().loadPageWidgets(pageId);
+  },
+
+  savePageWidgets: () => {
+    const state = get();
+    set((s) => ({
+      pages: s.pages.map(p =>
+        p.id === state.currentPageId
+          ? { ...p, widgets: state.widgets, canvasSize: state.canvasSize }
+          : p
+      ),
+    }));
+  },
+
+  loadPageWidgets: (pageId) => {
+    const page = get().pages.find(p => p.id === pageId);
+    if (page) {
+      set({
+        widgets: page.widgets || [],
+        canvasSize: page.canvasSize || { width: 800, height: 480 },
+        selectedWidgetId: null,
+      });
+    }
+  },
+
+  duplicatePage: (pageId) => {
+    const page = get().pages.find(p => p.id === pageId);
+    if (page) {
+      const newId = `page_${uuidv4()}`;
+      const duplicated = {
+        ...page,
+        id: newId,
+        name: `${page.name} (Copy)`,
+        widgets: page.widgets.map(w => ({
+          ...w,
+          id: uuidv4(),
+        })),
+      };
+
+      set((state) => ({
+        pages: [...state.pages, duplicated],
+      }));
+    }
+  },
+
+  // Assets management (v1.2)
+  addAsset: (type, asset) => {
+    set((state) => ({
+      assets: {
+        ...state.assets,
+        [type]: [...state.assets[type], { ...asset, id: uuidv4() }],
+      },
+    }));
+  },
+
+  removeAsset: (type, assetId) => {
+    set((state) => ({
+      assets: {
+        ...state.assets,
+        [type]: state.assets[type].filter(a => a.id !== assetId),
+      },
+    }));
+  },
+
+  getAsset: (type, assetId) => {
+    const assets = get().assets[type];
+    return assets.find(a => a.id === assetId);
+  },
+
   // Project operations
   loadProject: (projectData) => {
-    set({
-      projectName: projectData.projectName || 'Untitled Project',
-      widgets: projectData.widgets || [],
-      canvasSize: projectData.canvasSize || { width: 800, height: 480 },
-      selectedWidgetId: null,
-      history: [],
-      historyIndex: -1,
-    });
+    // Support for v1.2 multi-page format
+    if (projectData.pages) {
+      const firstPage = projectData.pages[0];
+      set({
+        projectName: projectData.projectName || 'Untitled Project',
+        pages: projectData.pages,
+        currentPageId: projectData.currentPageId || firstPage.id,
+        widgets: firstPage.widgets || [],
+        canvasSize: firstPage.canvasSize || { width: 800, height: 480 },
+        assets: projectData.assets || { images: [], fonts: [] },
+        selectedWidgetId: null,
+        history: [],
+        historyIndex: -1,
+      });
+    } else {
+      // Legacy v1.1 format
+      set({
+        projectName: projectData.projectName || 'Untitled Project',
+        pages: [{
+          id: 'page_1',
+          name: 'Main Screen',
+          widgets: projectData.widgets || [],
+          canvasSize: projectData.canvasSize || { width: 800, height: 480 },
+        }],
+        currentPageId: 'page_1',
+        widgets: projectData.widgets || [],
+        canvasSize: projectData.canvasSize || { width: 800, height: 480 },
+        assets: { images: [], fonts: [] },
+        selectedWidgetId: null,
+        history: [],
+        historyIndex: -1,
+      });
+    }
     get().saveHistory();
   },
 
   getProjectData: () => {
     const state = get();
+    // Save current page before export
+    get().savePageWidgets();
+
     return {
       projectName: state.projectName,
-      widgets: state.widgets,
-      canvasSize: state.canvasSize,
-      version: '1.1.0',
+      pages: state.pages,
+      currentPageId: state.currentPageId,
+      assets: state.assets,
+      version: '1.2.0',
       createdAt: new Date().toISOString(),
     };
   },
@@ -213,11 +386,68 @@ const useStore = create((set, get) => ({
     set({
       projectName: 'Untitled Project',
       projectPath: null,
+      pages: [{
+        id: 'page_1',
+        name: 'Main Screen',
+        widgets: [],
+        canvasSize: { width: 800, height: 480 },
+      }],
+      currentPageId: 'page_1',
       widgets: [],
+      assets: { images: [], fonts: [] },
       selectedWidgetId: null,
       history: [],
       historyIndex: -1,
     });
+  },
+
+  // Screen templates (v1.2)
+  applyTemplate: (templateName) => {
+    const templates = {
+      'blank': {
+        widgets: [],
+      },
+      'dashboard': {
+        widgets: [
+          createWidget('panel', uuidv4(), { x: 10, y: 10 }),
+          createWidget('label', uuidv4(), { x: 30, y: 30 }),
+          createWidget('button', uuidv4(), { x: 10, y: 400 }),
+        ],
+      },
+      'settings': {
+        widgets: [
+          createWidget('label', uuidv4(), { x: 20, y: 20 }),
+          createWidget('switch', uuidv4(), { x: 20, y: 60 }),
+          createWidget('slider', uuidv4(), { x: 20, y: 120 }),
+        ],
+      },
+      'list': {
+        widgets: [
+          createWidget('panel', uuidv4(), { x: 10, y: 10 }),
+          createWidget('panel', uuidv4(), { x: 10, y: 110 }),
+          createWidget('panel', uuidv4(), { x: 10, y: 210 }),
+        ],
+      },
+    };
+
+    const template = templates[templateName];
+    if (template) {
+      set({
+        widgets: template.widgets,
+        selectedWidgetId: null,
+      });
+      get().saveHistory();
+      get().savePageWidgets();
+    }
+  },
+
+  getAvailableTemplates: () => {
+    return [
+      { id: 'blank', name: 'Blank Screen', description: 'Empty canvas' },
+      { id: 'dashboard', name: 'Dashboard', description: 'Panel with title and button' },
+      { id: 'settings', name: 'Settings', description: 'Common settings layout' },
+      { id: 'list', name: 'List View', description: 'Vertical list of panels' },
+    ];
   },
 }));
 

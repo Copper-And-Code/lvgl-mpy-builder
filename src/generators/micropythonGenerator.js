@@ -268,6 +268,21 @@ function generateWidgetCode(widget, widgets, indent = '    ') {
 }
 
 export function generateMicroPythonCode(projectData) {
+  const { projectName, widgets, canvasSize, pages, version } = projectData;
+  const functionName = sanitizeIdentifier(projectName || 'ui') + '_create';
+
+  // Check if this is a multi-page project (v1.2+)
+  const isMultiPage = pages && pages.length > 0;
+
+  if (isMultiPage) {
+    return generateMultiPageMicroPythonCode(projectData);
+  }
+
+  // Legacy single-page generation
+  return generateSinglePageMicroPythonCode(projectData);
+}
+
+function generateSinglePageMicroPythonCode(projectData) {
   const { projectName, widgets, canvasSize } = projectData;
   const functionName = sanitizeIdentifier(projectName || 'ui') + '_create';
 
@@ -348,6 +363,144 @@ def ${functionName}_init():
 
 # Example usage:
 # ${functionName}_init()
+`;
+
+  return code;
+}
+
+function generateMultiPageMicroPythonCode(projectData) {
+  const { projectName, pages, assets } = projectData;
+  const baseName = sanitizeIdentifier(projectName || 'ui');
+
+  let code = `"""
+Auto-generated LVGL UI Code for MicroPython (Multi-Page)
+Project: ${projectName}
+Generated: ${new Date().toISOString()}
+Pages: ${pages.length}
+Version: 1.2.0
+"""
+
+import lvgl as lv
+
+`;
+
+  // Collect all event callbacks from all pages
+  const allEventCallbacks = new Set();
+  pages.forEach((page) => {
+    page.widgets?.forEach((widget) => {
+      if (widget.events && widget.events.length > 0) {
+        widget.events.forEach((event) => {
+          const callbackStr = JSON.stringify({
+            name: sanitizeIdentifier(event.callback),
+            type: event.type,
+            code: event.code || '# TODO: Implement event handler'
+          });
+          allEventCallbacks.add(callbackStr);
+        });
+      }
+    });
+  });
+
+  // Generate event callback implementations
+  if (allEventCallbacks.size > 0) {
+    code += `# Event callback implementations\n`;
+    Array.from(allEventCallbacks).forEach((callbackStr) => {
+      const callback = JSON.parse(callbackStr);
+      const eventType = callback.type.replace('LV_EVENT_', '').toUpperCase();
+      code += `def ${callback.name}(e):
+    """Event handler for ${callback.type}"""
+    code = e.get_code()
+    obj = e.get_target()
+
+    if code == lv.EVENT.${eventType}:
+        ${callback.code}
+
+`;
+    });
+  }
+
+  // Generate screen objects
+  code += `# Screen objects for each page\n`;
+  code += `screens = [None] * ${pages.length}\n`;
+  code += `current_screen = 0\n\n`;
+
+  // Generate function for each page
+  pages.forEach((page, index) => {
+    const pageFunctionName = `${baseName}_create_${sanitizeIdentifier(page.name)}`;
+    const pageWidgets = page.widgets || [];
+
+    // Sort widgets to ensure parents are created before children
+    const sortedWidgets = [...pageWidgets].sort((a, b) => {
+      if (!a.parentId && b.parentId) return -1;
+      if (a.parentId && !b.parentId) return 1;
+      return 0;
+    });
+
+    code += `def ${pageFunctionName}(parent=None):
+    """
+    Create page: ${page.name}
+    Size: ${page.canvasSize.width}x${page.canvasSize.height}
+    Widgets: ${pageWidgets.length}
+    """
+    if parent is None:
+        parent = lv.scr_act()
+
+`;
+
+    // Generate code for each widget
+    sortedWidgets.forEach((widget) => {
+      code += generateWidgetCode(widget, sortedWidgets, '    ');
+    });
+
+    code += `\n`;
+  });
+
+  // Generate navigation functions
+  code += `def ${baseName}_load_page(page_index):
+    """
+    Load a specific page by index
+
+    Args:
+        page_index: Index of the page to load (0-${pages.length - 1})
+    """
+    global screens, current_screen
+
+    if page_index < 0 or page_index >= ${pages.length}:
+        return
+
+    if screens[page_index] is None:
+        screens[page_index] = lv.obj()
+
+        # Create the page based on index
+${pages.map((page, index) => {
+  const pageFunctionName = `${baseName}_create_${sanitizeIdentifier(page.name)}`;
+  return `        ${index === 0 ? 'if' : 'elif'} page_index == ${index}:
+            ${pageFunctionName}(screens[${index}])`;
+}).join('\n')}
+
+    lv.scr_load(screens[page_index])
+    current_screen = page_index
+
+def ${baseName}_get_current_page():
+    """Get current page index"""
+    return current_screen
+
+def ${baseName}_init():
+    """
+    Initialize all screens and show the first page
+    """
+    global screens, current_screen
+
+    # Initialize screen array
+    screens = [None] * ${pages.length}
+    current_screen = 0
+
+    # Load first page
+    ${baseName}_load_page(0)
+
+# Example usage:
+# ${baseName}_init()
+# ${baseName}_load_page(1)  # Switch to page 1
 `;
 
   return code;

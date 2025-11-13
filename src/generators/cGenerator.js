@@ -264,6 +264,21 @@ function getWidgetParentVarName(widget, widgets) {
 }
 
 export function generateCCode(projectData) {
+  const { projectName, widgets, canvasSize, pages, version } = projectData;
+  const functionName = sanitizeIdentifier(projectName || 'ui') + '_create';
+
+  // Check if this is a multi-page project (v1.2+)
+  const isMultiPage = pages && pages.length > 0;
+
+  if (isMultiPage) {
+    return generateMultiPageCCode(projectData);
+  }
+
+  // Legacy single-page generation
+  return generateSinglePageCCode(projectData);
+}
+
+function generateSinglePageCCode(projectData) {
   const { projectName, widgets, canvasSize } = projectData;
   const functionName = sanitizeIdentifier(projectName || 'ui') + '_create';
 
@@ -355,6 +370,162 @@ void ${functionName}_init(void)
     lv_obj_t *screen = lv_obj_create(NULL);
     ${functionName}(screen);
     lv_scr_load(screen);
+}
+`;
+
+  return code;
+}
+
+function generateMultiPageCCode(projectData) {
+  const { projectName, pages, assets } = projectData;
+  const baseName = sanitizeIdentifier(projectName || 'ui');
+
+  let code = `/*
+ * Auto-generated LVGL UI Code (Multi-Page)
+ * Project: ${projectName}
+ * Generated: ${new Date().toISOString()}
+ * Pages: ${pages.length}
+ * Version: 1.2.0
+ */
+
+#include "lvgl.h"
+
+`;
+
+  // Collect all event callbacks from all pages
+  const allEventCallbacks = new Set();
+  pages.forEach((page) => {
+    page.widgets?.forEach((widget) => {
+      if (widget.events && widget.events.length > 0) {
+        widget.events.forEach((event) => {
+          const callbackStr = JSON.stringify({
+            name: sanitizeIdentifier(event.callback),
+            type: event.type,
+            code: event.code || '// TODO: Implement event handler'
+          });
+          allEventCallbacks.add(callbackStr);
+        });
+      }
+    });
+  });
+
+  // Generate forward declarations for event callbacks
+  if (allEventCallbacks.size > 0) {
+    code += `/* Event callback declarations */\n`;
+    Array.from(allEventCallbacks).forEach((callbackStr) => {
+      const callback = JSON.parse(callbackStr);
+      code += `static void ${callback.name}(lv_event_t *e);\n`;
+    });
+    code += '\n';
+  }
+
+  // Generate screen objects array
+  code += `/* Screen objects for each page */\n`;
+  code += `static lv_obj_t *screens[${pages.length}];\n`;
+  code += `static int current_screen = 0;\n\n`;
+
+  // Generate function for each page
+  pages.forEach((page, index) => {
+    const pageFunctionName = `${baseName}_create_${sanitizeIdentifier(page.name)}`;
+    const pageWidgets = page.widgets || [];
+
+    // Sort widgets to ensure parents are created before children
+    const sortedWidgets = [...pageWidgets].sort((a, b) => {
+      if (!a.parentId && b.parentId) return -1;
+      if (a.parentId && !b.parentId) return 1;
+      return 0;
+    });
+
+    code += `/**
+ * Create page: ${page.name}
+ * Size: ${page.canvasSize.width}x${page.canvasSize.height}
+ * Widgets: ${pageWidgets.length}
+ */
+void ${pageFunctionName}(lv_obj_t *parent)
+{
+    if (parent == NULL) {
+        parent = lv_scr_act();
+    }
+
+`;
+
+    // Generate code for each widget
+    sortedWidgets.forEach((widget) => {
+      code += generateWidgetCode(widget, sortedWidgets, '    ');
+    });
+
+    code += `}
+
+`;
+  });
+
+  // Generate event callback implementations
+  if (allEventCallbacks.size > 0) {
+    code += `/* Event callback implementations */\n`;
+    Array.from(allEventCallbacks).forEach((callbackStr) => {
+      const callback = JSON.parse(callbackStr);
+      code += `static void ${callback.name}(lv_event_t *e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t *obj = lv_event_get_target(e);
+
+    if (code == ${callback.type}) {
+        ${callback.code}
+    }
+}
+
+`;
+    });
+  }
+
+  // Generate navigation functions
+  code += `/**
+ * Load a specific page by index
+ * @param page_index Index of the page to load (0-${pages.length - 1})
+ */
+void ${baseName}_load_page(int page_index)
+{
+    if (page_index < 0 || page_index >= ${pages.length}) {
+        return;
+    }
+
+    if (screens[page_index] == NULL) {
+        screens[page_index] = lv_obj_create(NULL);
+
+        switch(page_index) {
+${pages.map((page, index) => {
+  const pageFunctionName = `${baseName}_create_${sanitizeIdentifier(page.name)}`;
+  return `            case ${index}:
+                ${pageFunctionName}(screens[${index}]);
+                break;`;
+}).join('\n')}
+        }
+    }
+
+    lv_scr_load(screens[page_index]);
+    current_screen = page_index;
+}
+
+/**
+ * Get current page index
+ */
+int ${baseName}_get_current_page(void)
+{
+    return current_screen;
+}
+
+/**
+ * Initialize all screens and show the first page
+ */
+void ${baseName}_init(void)
+{
+    // Initialize screen array
+    for (int i = 0; i < ${pages.length}; i++) {
+        screens[i] = NULL;
+    }
+
+    // Load first page
+    ${baseName}_load_page(0);
 }
 `;
 

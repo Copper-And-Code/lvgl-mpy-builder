@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import useStore from '../core/store';
 import CodeExportModal from './CodeExportModal';
+import TemplateSelector from './TemplateSelector';
+import AssetManager from './AssetManager';
 
 const Toolbar = () => {
   const {
@@ -20,6 +22,8 @@ const Toolbar = () => {
   } = useStore();
 
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+  const [showAssetManager, setShowAssetManager] = useState(false);
 
   const handleNewProject = () => {
     if (confirm('Create a new project? Unsaved changes will be lost.')) {
@@ -127,6 +131,23 @@ const Toolbar = () => {
           </label>
         </div>
 
+        <div className="toolbar-section toolbar-divider">
+          <button
+            className="toolbar-btn"
+            onClick={() => setShowTemplateSelector(true)}
+            title="Apply Screen Template"
+          >
+            📐 Templates
+          </button>
+          <button
+            className="toolbar-btn"
+            onClick={() => setShowAssetManager(true)}
+            title="Manage Assets"
+          >
+            🖼️ Assets
+          </button>
+        </div>
+
         <div className="toolbar-section">
           <button
             className="toolbar-btn btn-primary"
@@ -139,6 +160,8 @@ const Toolbar = () => {
       </div>
 
       {showExportModal && <CodeExportModal onClose={() => setShowExportModal(false)} />}
+      {showTemplateSelector && <TemplateSelector onClose={() => setShowTemplateSelector(false)} />}
+      {showAssetManager && <AssetManager onClose={() => setShowAssetManager(false)} />}
     </>
   );
 };
