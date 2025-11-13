@@ -1,9 +1,12 @@
 import React from 'react';
 import useStore from '../core/store';
 import { widgetDefinitions } from '../core/widgetDefinitions';
+import EventEditor from './EventEditor';
+import AnimationEditor from './AnimationEditor';
+import StyleEditor from './StyleEditor';
 
 const PropertiesPanel = () => {
-  const { widgets, selectedWidgetId, updateWidget, deleteWidget, duplicateWidget } = useStore();
+  const { widgets, selectedWidgetId, updateWidget, updateWidgetEvents, updateWidgetAnimations, updateWidgetStyles, deleteWidget, duplicateWidget } = useStore();
 
   const selectedWidget = widgets.find((w) => w.id === selectedWidgetId);
 
@@ -132,6 +135,21 @@ const PropertiesPanel = () => {
       <div className="properties-list">
         {definition.properties.map((prop) => renderPropertyInput(prop))}
       </div>
+
+      <EventEditor
+        widget={selectedWidget}
+        onUpdateEvents={(events) => updateWidgetEvents(selectedWidget.id, events)}
+      />
+
+      <AnimationEditor
+        widget={selectedWidget}
+        onUpdateAnimations={(animations) => updateWidgetAnimations(selectedWidget.id, animations)}
+      />
+
+      <StyleEditor
+        widget={selectedWidget}
+        onUpdateStyles={(styles) => updateWidgetStyles(selectedWidget.id, styles)}
+      />
 
       <div className="widget-actions">
         <button

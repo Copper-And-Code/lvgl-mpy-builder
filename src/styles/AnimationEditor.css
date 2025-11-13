@@ -1,0 +1,154 @@
+.animation-editor {
+  margin-top: 20px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.animation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: #f5f5f5;
+  cursor: pointer;
+  user-select: none;
+}
+
+.animation-header:hover {
+  background: #ececec;
+}
+
+.animation-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.animation-content {
+  padding: 12px;
+  background: white;
+}
+
+.btn-add-animation {
+  width: 100%;
+  padding: 8px 12px;
+  background: #FF9800;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.btn-add-animation:hover {
+  background: #F57C00;
+}
+
+.animations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.animation-item {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 12px;
+  background: #fafafa;
+}
+
+.animation-item-header {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.animation-type-select {
+  flex: 1;
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  background: white;
+  text-transform: capitalize;
+}
+
+.btn-delete-animation {
+  width: 28px;
+  height: 28px;
+  background: #f44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-delete-animation:hover {
+  background: #d32f2f;
+}
+
+.animation-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.animation-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.animation-details .property-field {
+  margin: 0;
+}
+
+.animation-details label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: #666;
+}
+
+.animation-details input,
+.animation-details select {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  box-sizing: border-box;
+}
+
+.animation-details .checkbox-field {
+  display: flex;
+  align-items: center;
+}
+
+.animation-details .checkbox-field label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.animation-details .checkbox-field input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
+.no-animations {
+  text-align: center;
+  color: #999;
+  font-size: 13px;
+  padding: 20px;
+  margin: 0;
+}
