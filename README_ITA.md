@@ -4,6 +4,12 @@ Un editor grafico open-source per LVGL (Light and Versatile Graphics Library) ch
 
 ![LVGL Editor](docs/screenshot.png)
 
+## Informazioni sul Progetto
+
+Questo progetto è stato sviluppato attraverso il **"vibe coding"** con l'assistenza di Claude AI. L'autore non aveva alcuna esperienza pregressa con React, Electron o framework di sviluppo frontend moderni. Attraverso un processo di sviluppo iterativo e conversazionale, Claude ha aiutato a progettare l'architettura, implementare le funzionalità, risolvere i problemi e creare un editor visuale completamente funzionale per LVGL.
+
+Questo dimostra come lo sviluppo assistito dall'AI possa permettere agli sviluppatori di costruire applicazioni sofisticate anche in stack tecnologici non familiari, concentrandosi sulla visione e sulle funzionalità mentre l'AI si occupa dei dettagli tecnici dell'implementazione.
+
 ## Caratteristiche
 
 ### 🎨 Editor Visuale
@@ -284,6 +290,7 @@ Questo progetto è rilasciato sotto licenza MIT. Vedi il file [LICENSE](LICENSE)
 - **React**: https://react.dev/
 - **Konva**: https://konvajs.org/
 - **Electron**: https://www.electronjs.org/
+- **Claude AI**: Assistente di sviluppo che ha reso possibile questo progetto
 
 ## Support
 
@@ -291,4 +298,4 @@ Per bug reports e feature requests, apri una issue su GitHub.
 
 ---
 
-Made with ❤️ for the LVGL community
+Made with ❤️ for the LVGL community (e con tanto aiuto da Claude AI!)
