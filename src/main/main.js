@@ -2,13 +2,26 @@ const { app, BrowserWindow, ipcMain, dialog, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
-// Disable GPU VSync to prevent GL surface errors on Linux
-app.commandLine.appendSwitch('disable-gpu-vsync');
-app.commandLine.appendSwitch('disable-frame-rate-limit');
-
-// Disable GtkFileChooserNative to prevent GTK casting and signal handler errors on Linux
+// Configure Electron flags for better Linux compatibility
 if (process.platform === 'linux') {
+  // Disable GPU VSync to prevent GL surface errors on Linux
+  app.commandLine.appendSwitch('disable-gpu-vsync');
+  app.commandLine.appendSwitch('disable-frame-rate-limit');
+  app.commandLine.appendSwitch('disable-gpu-vsync-check');
+
+  // Use X11 backend and disable hardware acceleration features that cause GL errors
+  app.commandLine.appendSwitch('disable-software-rasterizer');
+  app.commandLine.appendSwitch('ignore-gpu-blacklist');
+
+  // Use classic file picker instead of native GTK dialogs to prevent casting errors
   app.commandLine.appendSwitch('disable-features', 'GtkFileChooserNative');
+
+  // Suppress GTK warnings and portal usage
+  process.env.GTK_USE_PORTAL = '0';
+  process.env.G_MESSAGES_DEBUG = '';
+
+  // Disable sandbox if needed for file dialogs
+  app.commandLine.appendSwitch('no-sandbox');
 }
 
 let mainWindow;
