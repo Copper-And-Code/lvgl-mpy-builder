@@ -1,7 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
 
 // Configure Electron flags for better Linux compatibility
 if (process.platform === 'linux') {
@@ -28,38 +27,6 @@ if (process.platform === 'linux') {
   // Disable GPU to avoid OpenGL errors in restricted environments
   app.commandLine.appendSwitch('disable-gpu');
   app.commandLine.appendSwitch('disable-gpu-compositing');
-
-  // Fix /tmp access issues by using home directory for temporary files
-  const userHome = os.homedir();
-  const tmpDir = path.join(userHome, '.lvgl-editor-tmp');
-
-  // Create tmp directory if it doesn't exist
-  if (!fs.existsSync(tmpDir)) {
-    fs.mkdirSync(tmpDir, { recursive: true });
-  }
-
-  // Set TMPDIR environment variable to use our custom tmp directory
-  process.env.TMPDIR = tmpDir;
-  process.env.TEMP = tmpDir;
-  process.env.TMP = tmpDir;
-
-  // Use custom directories for cache and user data to avoid /tmp
-  app.commandLine.appendSwitch('disk-cache-dir', path.join(tmpDir, 'cache'));
-  app.commandLine.appendSwitch('user-data-dir', path.join(tmpDir, 'user-data'));
-
-  // Additional flags to completely avoid /tmp for shared memory
-  app.commandLine.appendSwitch('disable-shared-workers');
-  app.commandLine.appendSwitch('disable-web-security');
-  app.commandLine.appendSwitch('in-process-gpu');
-
-  // Force Chromium to use our custom temp directory for all operations
-  const cacheDir = path.join(tmpDir, 'chromium-cache');
-  if (!fs.existsSync(cacheDir)) {
-    fs.mkdirSync(cacheDir, { recursive: true });
-  }
-  app.setPath('temp', tmpDir);
-  app.setPath('cache', cacheDir);
-  app.setPath('userData', path.join(tmpDir, 'user-data'));
 }
 
 let mainWindow;
