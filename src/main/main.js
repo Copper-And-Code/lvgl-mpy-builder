@@ -52,9 +52,8 @@ function createWindow() {
     minHeight: 700,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      nodeIntegration: true,
-      contextIsolation: false,
-      enableRemoteModule: true,
+      nodeIntegration: false,
+      contextIsolation: true,
     },
     title: 'LVGL Visual Editor',
     icon: path.join(__dirname, '../../public/icon.png'),
