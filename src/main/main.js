@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -7,6 +7,37 @@ app.commandLine.appendSwitch('disable-gpu-vsync');
 app.commandLine.appendSwitch('disable-frame-rate-limit');
 
 let mainWindow;
+
+// Configure Content Security Policy
+function setupContentSecurityPolicy() {
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    // Define CSP based on environment
+    const csp = process.env.NODE_ENV === 'development'
+      ? [
+          "default-src 'self'",
+          "script-src 'self' 'unsafe-inline' http://localhost:* ws://localhost:*",
+          "style-src 'self' 'unsafe-inline'",
+          "img-src 'self' data: blob:",
+          "font-src 'self' data:",
+          "connect-src 'self' http://localhost:* ws://localhost:*"
+        ].join('; ')
+      : [
+          "default-src 'self'",
+          "script-src 'self' 'unsafe-inline'",
+          "style-src 'self' 'unsafe-inline'",
+          "img-src 'self' data: blob:",
+          "font-src 'self' data:",
+          "connect-src 'self'"
+        ].join('; ');
+
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [csp]
+      }
+    });
+  });
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -36,7 +67,10 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  setupContentSecurityPolicy();
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
