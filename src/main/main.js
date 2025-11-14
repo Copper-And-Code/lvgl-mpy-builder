@@ -6,6 +6,11 @@ const fs = require('fs');
 app.commandLine.appendSwitch('disable-gpu-vsync');
 app.commandLine.appendSwitch('disable-frame-rate-limit');
 
+// Disable GtkFileChooserNative to prevent GTK casting and signal handler errors on Linux
+if (process.platform === 'linux') {
+  app.commandLine.appendSwitch('disable-features', 'GtkFileChooserNative');
+}
+
 let mainWindow;
 
 // Configure Content Security Policy
