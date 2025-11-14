@@ -2,6 +2,10 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
+// Disable GPU VSync to prevent GL surface errors on Linux
+app.commandLine.appendSwitch('disable-gpu-vsync');
+app.commandLine.appendSwitch('disable-frame-rate-limit');
+
 let mainWindow;
 
 function createWindow() {
