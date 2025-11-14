@@ -80,7 +80,7 @@ function createWindow() {
   // Load the app
   if (process.env.NODE_ENV === 'development') {
     mainWindow.loadURL('http://localhost:3000');
-    mainWindow.webContents.openDevTools();
+    // mainWindow.webContents.openDevTools(); // Uncomment to open DevTools
   } else {
     mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'));
   }
