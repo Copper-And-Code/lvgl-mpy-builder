@@ -20,8 +20,7 @@ if (process.platform === 'linux') {
   process.env.GTK_USE_PORTAL = '0';
   process.env.G_MESSAGES_DEBUG = '';
 
-  // Disable sandbox and shared memory issues
-  app.commandLine.appendSwitch('no-sandbox');
+  // Disable shared memory issues
   app.commandLine.appendSwitch('disable-dev-shm-usage');
 
   // Disable GPU to avoid OpenGL errors in restricted environments
