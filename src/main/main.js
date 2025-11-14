@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, session } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, session, Menu, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -61,6 +61,160 @@ function setupContentSecurityPolicy() {
   });
 }
 
+function createMenu() {
+  const template = [
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'New Project',
+          accelerator: 'CmdOrCtrl+N',
+          click: () => {
+            mainWindow.webContents.send('menu-new-project');
+          }
+        },
+        {
+          label: 'Open Project',
+          accelerator: 'CmdOrCtrl+O',
+          click: () => {
+            mainWindow.webContents.send('menu-open-project');
+          }
+        },
+        {
+          label: 'Save Project',
+          accelerator: 'CmdOrCtrl+S',
+          click: () => {
+            mainWindow.webContents.send('menu-save-project');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Export Code',
+          accelerator: 'CmdOrCtrl+E',
+          click: () => {
+            mainWindow.webContents.send('menu-export-code');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Quit',
+          accelerator: 'CmdOrCtrl+Q',
+          click: () => {
+            app.quit();
+          }
+        }
+      ]
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        {
+          label: 'Undo',
+          accelerator: 'CmdOrCtrl+Z',
+          click: () => {
+            mainWindow.webContents.send('menu-undo');
+          }
+        },
+        {
+          label: 'Redo',
+          accelerator: 'CmdOrCtrl+Shift+Z',
+          click: () => {
+            mainWindow.webContents.send('menu-redo');
+          }
+        }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        {
+          label: 'Zoom In',
+          accelerator: 'CmdOrCtrl+Plus',
+          click: () => {
+            mainWindow.webContents.send('menu-zoom-in');
+          }
+        },
+        {
+          label: 'Zoom Out',
+          accelerator: 'CmdOrCtrl+-',
+          click: () => {
+            mainWindow.webContents.send('menu-zoom-out');
+          }
+        },
+        {
+          label: 'Reset Zoom',
+          accelerator: 'CmdOrCtrl+0',
+          click: () => {
+            mainWindow.webContents.send('menu-zoom-reset');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Toggle Grid',
+          accelerator: 'CmdOrCtrl+G',
+          click: () => {
+            mainWindow.webContents.send('menu-toggle-grid');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Toggle Developer Tools',
+          accelerator: 'F12',
+          click: () => {
+            mainWindow.webContents.toggleDevTools();
+          }
+        },
+        {
+          label: 'Reload',
+          accelerator: 'CmdOrCtrl+R',
+          click: () => {
+            mainWindow.reload();
+          }
+        }
+      ]
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'Documentation',
+          click: async () => {
+            await shell.openExternal('https://github.com/nuraci/LVGL_gen#readme');
+          }
+        },
+        {
+          label: 'GitHub Repository',
+          click: async () => {
+            await shell.openExternal('https://github.com/nuraci/LVGL_gen');
+          }
+        },
+        {
+          label: 'Report Issue',
+          click: async () => {
+            await shell.openExternal('https://github.com/nuraci/LVGL_gen/issues');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'About LVGL Editor',
+          click: () => {
+            dialog.showMessageBox(mainWindow, {
+              type: 'info',
+              title: 'About LVGL Visual Editor',
+              message: 'LVGL Visual Editor',
+              detail: 'Version 2.0.0\n\nA visual editor for LVGL with C and MicroPython code generation.\n\nDeveloped with Claude AI assistance through "vibe coding".\n\n© 2025 LVGL Community',
+              buttons: ['OK']
+            });
+          }
+        }
+      ]
+    }
+  ];
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -92,6 +246,7 @@ function createWindow() {
 app.whenReady().then(() => {
   setupContentSecurityPolicy();
   createWindow();
+  createMenu();
 });
 
 app.on('window-all-closed', () => {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import useStore from '../core/store';
 import CodeExportModal from './CodeExportModal';
 import TemplateSelector from './TemplateSelector';
@@ -71,6 +71,48 @@ const Toolbar = () => {
   const handleZoomIn = () => setZoom(zoom + 0.1);
   const handleZoomOut = () => setZoom(zoom - 0.1);
   const handleZoomReset = () => setZoom(1);
+
+  // Handle menu commands from Electron
+  useEffect(() => {
+    if (window.electron && window.electron.onMenuCommand) {
+      window.electron.onMenuCommand((command) => {
+        switch (command) {
+          case 'menu-new-project':
+            handleNewProject();
+            break;
+          case 'menu-open-project':
+            handleLoadProject();
+            break;
+          case 'menu-save-project':
+            handleSaveProject();
+            break;
+          case 'menu-export-code':
+            setShowExportModal(true);
+            break;
+          case 'menu-undo':
+            undo();
+            break;
+          case 'menu-redo':
+            redo();
+            break;
+          case 'menu-zoom-in':
+            handleZoomIn();
+            break;
+          case 'menu-zoom-out':
+            handleZoomOut();
+            break;
+          case 'menu-zoom-reset':
+            handleZoomReset();
+            break;
+          case 'menu-toggle-grid':
+            toggleGrid();
+            break;
+          default:
+            console.log('Unknown menu command:', command);
+        }
+      });
+    }
+  }, []);
 
   return (
     <>
