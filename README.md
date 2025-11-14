@@ -1,33 +1,39 @@
 # LVGL Visual Editor
 
-Un editor grafico open-source per LVGL (Light and Versatile Graphics Library) che genera automaticamente codice in C e MicroPython.
+An open-source graphical editor for LVGL (Light and Versatile Graphics Library) that automatically generates code in C and MicroPython.
 
 ![LVGL Editor](docs/screenshot.png)
 
-## Caratteristiche
+## About This Project
 
-### 🎨 Editor Visuale
-- **Drag & Drop**: Trascina i widget direttamente sul canvas
-- **Proprietà Real-time**: Modifica le proprietà dei widget e vedi i cambiamenti immediatamente
-- **Grid & Snap**: Sistema di griglia con snap automatico per allineamento preciso
-- **Zoom**: Ingrandisci e riduci la vista del canvas
+This project was developed through **"vibe coding"** with Claude AI assistance. The author had no prior experience with React, Electron, or modern frontend development frameworks. Through an iterative, conversational development process, Claude helped design the architecture, implement features, debug issues, and create a fully functional visual editor for LVGL.
 
-### 🔧 Widget Supportati
+This demonstrates how AI-assisted development can enable developers to build sophisticated applications even in unfamiliar technology stacks, by focusing on the vision and functionality while the AI handles the technical implementation details.
+
+## Features
+
+### 🎨 Visual Editor
+- **Drag & Drop**: Drag widgets directly onto the canvas
+- **Real-time Properties**: Modify widget properties and see changes immediately
+- **Grid & Snap**: Grid system with automatic snap for precise alignment
+- **Zoom**: Zoom in and out of the canvas view
+
+### 🔧 Supported Widgets
 - **Base**: Button, Label, Panel
 - **Input**: Slider, Switch, Checkbox, Textarea
 - **Display**: Progress Bar, Arc, Spinner
 
-### 📤 Generazione Codice
-- **C Generator**: Genera codice C ottimizzato per LVGL
-- **MicroPython Generator**: Genera codice MicroPython compatibile
-- **Export**: Esporta direttamente su file o copia negli appunti
+### 📤 Code Generation
+- **C Generator**: Generates optimized C code for LVGL
+- **MicroPython Generator**: Generates compatible MicroPython code
+- **Export**: Export directly to file or copy to clipboard
 
-### 💾 Gestione Progetti
-- **Salva/Carica**: Salva progetti in formato JSON
-- **Undo/Redo**: Sistema di history completo
-- **Multi-pagina**: Supporto per progetti con pagine multiple (coming soon)
+### 💾 Project Management
+- **Save/Load**: Save projects in JSON format
+- **Undo/Redo**: Complete history system
+- **Multi-page**: Support for multi-page projects (coming soon)
 
-## Architettura
+## Architecture
 
 ```
 lvgl-editor/
@@ -53,65 +59,65 @@ lvgl-editor/
 └── package.json
 ```
 
-## Stack Tecnologico
+## Technology Stack
 
 - **Frontend**: React 18 + Vite
 - **Desktop**: Electron
-- **Canvas**: React-Konva (basato su Konva.js)
+- **Canvas**: React-Konva (based on Konva.js)
 - **State Management**: Zustand
 - **Code Generation**: Template-based generators
 - **Styling**: CSS modules
 
-## Installazione
+## Installation
 
-### Prerequisiti
-- Node.js 18 o superiore
-- npm o yarn
+### Prerequisites
+- Node.js 18 or higher
+- npm or yarn
 
 ### Setup
 
 ```bash
-# Clona il repository
+# Clone the repository
 git clone https://github.com/yourusername/lvgl-editor.git
 cd lvgl-editor
 
-# Installa le dipendenze
+# Install dependencies
 npm install
 
-# Avvia in modalità sviluppo (solo browser)
+# Start in development mode (browser only)
 npm run dev:renderer
 
-# Per testare l'app Electron completa (richiede setup aggiuntivo)
+# To test the complete Electron app (requires additional setup)
 npm run dev
 ```
 
-## Utilizzo
+## Usage
 
-### 1. Creare un Nuovo Progetto
-1. Clicca su "New" nella toolbar
-2. Imposta il nome del progetto
+### 1. Create a New Project
+1. Click "New" in the toolbar
+2. Set the project name
 
-### 2. Aggiungere Widget
-1. Seleziona un widget dalla palette a sinistra
-2. Clicca per aggiungerlo al canvas
-3. Trascina per posizionarlo
+### 2. Add Widgets
+1. Select a widget from the palette on the left
+2. Click to add it to the canvas
+3. Drag to position it
 
-### 3. Modificare Proprietà
-1. Seleziona un widget sul canvas
-2. Modifica le proprietà nel pannello a destra
-3. Le modifiche vengono applicate in tempo reale
+### 3. Modify Properties
+1. Select a widget on the canvas
+2. Modify properties in the panel on the right
+3. Changes are applied in real-time
 
-### 4. Esportare il Codice
-1. Clicca su "Export Code"
-2. Seleziona il linguaggio (C o MicroPython)
-3. Copia negli appunti o esporta su file
+### 4. Export Code
+1. Click "Export Code"
+2. Select the language (C or MicroPython)
+3. Copy to clipboard or export to file
 
-### 5. Salvare il Progetto
-1. Clicca su "Save"
-2. Scegli la posizione e il nome del file
-3. Il progetto viene salvato in formato JSON
+### 5. Save Project
+1. Click "Save"
+2. Choose the location and file name
+3. The project is saved in JSON format
 
-## Esempio di Codice Generato
+## Generated Code Example
 
 ### C
 ```c
@@ -157,11 +163,11 @@ def my_ui_create(parent=None):
 ## Roadmap
 
 ### v1.0 (MVP) ✅
-- [x] Editor visuale base
-- [x] Widget fondamentali
-- [x] Generatori C e MicroPython
-- [x] Sistema di proprietà
-- [x] Export codice
+- [x] Basic visual editor
+- [x] Fundamental widgets
+- [x] C and MicroPython generators
+- [x] Property system
+- [x] Code export
 
 ### v1.1 ✅
 - [x] Event handlers
@@ -173,7 +179,7 @@ def my_ui_create(parent=None):
 - [x] Multi-page support
 - [x] Screen templates
 - [x] Asset management (images, fonts)
-- [ ] Preview sul dispositivo reale
+- [ ] Preview on real device
 
 ### v2.0 ✅
 - [x] Collaborative editing
@@ -181,32 +187,32 @@ def my_ui_create(parent=None):
 - [x] Plugin system
 - [x] Cloud sync
 
-## Funzionalità v2.0
+## v2.0 Features
 
 ### 🧩 Component Library
-La libreria di componenti permette di salvare e riutilizzare gruppi di widget come componenti personalizzati:
+The component library allows you to save and reuse groups of widgets as custom components:
 
-- **Salva Componenti**: Seleziona widget (con relativi figli) e salvali come componente riutilizzabile
-- **Gestione Libreria**: Organizza i componenti con nome, descrizione e tag
-- **Import/Export**: Condividi la tua libreria di componenti con altri utenti
-- **Ricerca**: Trova rapidamente i componenti per nome, descrizione o tag
+- **Save Components**: Select widgets (with their children) and save them as reusable components
+- **Library Management**: Organize components with name, description and tags
+- **Import/Export**: Share your component library with other users
+- **Search**: Quickly find components by name, description or tags
 
-**Come usare:**
-1. Seleziona un widget sul canvas
-2. Clicca sul pulsante floating "Component Library" (in basso a sinistra)
-3. Clicca "Save Component" e inserisci i dettagli
-4. Per inserire un componente, clicca su "+" accanto al componente desiderato
+**How to use:**
+1. Select a widget on the canvas
+2. Click the floating "Component Library" button (bottom left)
+3. Click "Save Component" and enter the details
+4. To insert a component, click "+" next to the desired component
 
 ### 🔌 Plugin System
-Sistema estensibile per caricare plugin esterni che aggiungono nuove funzionalità:
+Extensible system for loading external plugins that add new functionality:
 
-- **Caricamento Plugin**: Carica plugin da URL o codice JavaScript
-- **Custom Widgets**: I plugin possono aggiungere nuovi tipi di widget
-- **Custom Generators**: Aggiungi supporto per nuovi linguaggi di output
-- **Hook System**: I plugin possono intercettare eventi dell'editor
-- **Gestione Plugin**: Abilita/disabilita plugin dinamicamente
+- **Plugin Loading**: Load plugins from URL or JavaScript code
+- **Custom Widgets**: Plugins can add new widget types
+- **Custom Generators**: Add support for new output languages
+- **Hook System**: Plugins can intercept editor events
+- **Plugin Management**: Enable/disable plugins dynamically
 
-**Struttura Plugin:**
+**Plugin Structure:**
 ```javascript
 module.exports.default = {
   id: 'my-plugin',
@@ -236,59 +242,60 @@ module.exports.default = {
 ```
 
 ### ☁️ Cloud Sync
-Sincronizza i tuoi progetti con il cloud per accedervi da qualsiasi dispositivo:
+Sync your projects with the cloud to access them from any device:
 
-- **Provider Multipli**: Supporto per diversi provider cloud (Local Storage incluso)
-- **Auto-Sync**: Sincronizzazione automatica ogni 5 minuti (opzionale)
-- **Gestione Progetti**: Lista, carica ed elimina progetti dal cloud
-- **Backup Automatico**: Salvataggio automatico per non perdere il lavoro
+- **Multiple Providers**: Support for different cloud providers (Local Storage included)
+- **Auto-Sync**: Automatic synchronization every 5 minutes (optional)
+- **Project Management**: List, load and delete projects from the cloud
+- **Automatic Backup**: Auto-save to never lose your work
 
-**Provider Disponibili:**
+**Available Providers:**
 - Local Storage (demo/offline)
 - Custom providers via API
 
 ### 👥 Collaborative Editing
-Lavora sui progetti in tempo reale con altri utenti:
+Work on projects in real-time with other users:
 
-- **Sessioni Multi-Utente**: Crea o unisciti a sessioni collaborative
-- **Real-Time Sync**: Vedi le modifiche degli altri utenti in tempo reale
-- **User Awareness**: Visualizza chi è connesso con colori distintivi
-- **Cursor Tracking**: Vedi dove stanno lavorando gli altri utenti
-- **Conflict Resolution**: Sistema di gestione conflitti automatico
+- **Multi-User Sessions**: Create or join collaborative sessions
+- **Real-Time Sync**: See other users' changes in real-time
+- **User Awareness**: View who is connected with distinctive colors
+- **Cursor Tracking**: See where other users are working
+- **Conflict Resolution**: Automatic conflict management system
 
-**Come iniziare:**
-1. Clicca sul pulsante "Collaboration" (in basso a destra)
-2. Scegli "Join Session"
-3. Inserisci server URL e session ID (o generane uno nuovo)
-4. Condividi il session ID con i collaboratori
+**Getting started:**
+1. Click the "Collaboration" button (bottom right)
+2. Choose "Join Session"
+3. Enter server URL and session ID (or generate a new one)
+4. Share the session ID with collaborators
 
-**Nota:** Per la collaborazione in tempo reale è necessario un server WebSocket. La versione attuale include un'implementazione demo per sviluppo locale.
+**Note:** Real-time collaboration requires a WebSocket server. The current version includes a demo implementation for local development.
 
-## Contribuire
+## Contributing
 
-I contributi sono benvenuti! Per favore:
+Contributions are welcome! Please:
 
-1. Fork il progetto
-2. Crea un branch per la tua feature (`git checkout -b feature/AmazingFeature`)
-3. Commit le modifiche (`git commit -m 'Add some AmazingFeature'`)
-4. Push al branch (`git push origin feature/AmazingFeature`)
-5. Apri una Pull Request
+1. Fork the project
+2. Create a branch for your feature (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-## Licenza
+## License
 
-Questo progetto è rilasciato sotto licenza MIT. Vedi il file [LICENSE](LICENSE) per i dettagli.
+This project is released under the MIT license. See the [LICENSE](LICENSE) file for details.
 
-## Crediti
+## Credits
 
 - **LVGL**: https://lvgl.io/
 - **React**: https://react.dev/
 - **Konva**: https://konvajs.org/
 - **Electron**: https://www.electronjs.org/
+- **Claude AI**: Development assistant that made this project possible
 
 ## Support
 
-Per bug reports e feature requests, apri una issue su GitHub.
+For bug reports and feature requests, open an issue on GitHub.
 
 ---
 
-Made with ❤️ for the LVGL community
+Made with ❤️ for the LVGL community (and with a lot of help from Claude AI!)
