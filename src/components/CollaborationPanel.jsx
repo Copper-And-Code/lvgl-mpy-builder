@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, UserPlus, Link, LinkOff, Circle } from 'lucide-react';
+import { Users, UserPlus, Link, Unlink, Circle } from 'lucide-react';
 import collaboration from '../core/collaboration';
 import '../styles/CollaborationPanel.css';
 
@@ -173,7 +173,7 @@ export default function CollaborationPanel() {
 
               <div className="collaboration-disconnect">
                 <button onClick={handleDisconnect} className="btn-disconnect">
-                  <LinkOff size={16} />
+                  <Unlink size={16} />
                   Leave Session
                 </button>
               </div>
