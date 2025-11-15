@@ -1,4 +1,5 @@
 // C Code Generator for LVGL
+import { loadTemplate } from './templateLoader';
 
 function hexToRgb(hex) {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -263,7 +264,7 @@ function getWidgetParentVarName(widget, widgets) {
   return parentWidget ? sanitizeIdentifier(parentWidget.name) : 'parent';
 }
 
-export function generateCCode(projectData) {
+export async function generateCCode(projectData) {
   const { projectName, widgets, canvasSize, pages, version } = projectData;
   const functionName = sanitizeIdentifier(projectName || 'ui') + '_create';
 
@@ -271,14 +272,14 @@ export function generateCCode(projectData) {
   const isMultiPage = pages && pages.length > 0;
 
   if (isMultiPage) {
-    return generateMultiPageCCode(projectData);
+    return await generateMultiPageCCode(projectData);
   }
 
   // Legacy single-page generation
-  return generateSinglePageCCode(projectData);
+  return await generateSinglePageCCode(projectData);
 }
 
-function generateSinglePageCCode(projectData) {
+async function generateSinglePageCCode(projectData) {
   const { projectName, widgets, canvasSize } = projectData;
   const functionName = sanitizeIdentifier(projectName || 'ui') + '_create';
 
@@ -290,110 +291,53 @@ function generateSinglePageCCode(projectData) {
   });
 
   // Collect all unique event callbacks
-  const eventCallbacks = new Set();
+  const eventCallbacksSet = new Set();
   sortedWidgets.forEach((widget) => {
     if (widget.events && widget.events.length > 0) {
       widget.events.forEach((event) => {
-        eventCallbacks.add({
+        const callbackStr = JSON.stringify({
           name: sanitizeIdentifier(event.callback),
           type: event.type,
           code: event.code || '// TODO: Implement event handler'
         });
+        eventCallbacksSet.add(callbackStr);
       });
     }
   });
 
-  let code = `/*
- * Auto-generated LVGL UI Code
- * Project: ${projectName}
- * Generated: ${new Date().toISOString()}
- * Display Size: ${canvasSize.width}x${canvasSize.height}
- */
+  // Convert event callbacks to array
+  const eventCallbacks = Array.from(eventCallbacksSet).map(str => JSON.parse(str));
 
-#include "lvgl.h"
+  // Generate widget code
+  const widgetCodes = sortedWidgets.map((widget) =>
+    generateWidgetCode(widget, sortedWidgets, '    ')
+  );
 
-`;
+  // Prepare template data
+  const templateData = {
+    projectName: projectName || 'Untitled',
+    generatedDate: new Date().toISOString(),
+    canvasWidth: canvasSize.width,
+    canvasHeight: canvasSize.height,
+    functionName,
+    hasEventCallbacks: eventCallbacks.length > 0,
+    eventCallbacks,
+    widgets: widgetCodes,
+  };
 
-  // Generate forward declarations for event callbacks
-  if (eventCallbacks.size > 0) {
-    code += `/* Event callback declarations */\n`;
-    Array.from(eventCallbacks).forEach((callback) => {
-      code += `static void ${callback.name}(lv_event_t *e);\n`;
-    });
-    code += '\n';
-  }
+  // Load and compile template
+  const template = await loadTemplate('c');
 
-  code += `/**
- * Create the UI for ${projectName}
- * @param parent Parent object (use lv_scr_act() for screen)
- */
-void ${functionName}(lv_obj_t *parent)
-{
-    if (parent == NULL) {
-        parent = lv_scr_act();
-    }
-
-`;
-
-  // Generate code for each widget
-  sortedWidgets.forEach((widget) => {
-    code += generateWidgetCode(widget, sortedWidgets, '    ');
-  });
-
-  code += `}
-
-`;
-
-  // Generate event callback implementations
-  if (eventCallbacks.size > 0) {
-    code += `/* Event callback implementations */\n`;
-    Array.from(eventCallbacks).forEach((callback) => {
-      code += `static void ${callback.name}(lv_event_t *e)
-{
-    lv_event_code_t code = lv_event_get_code(e);
-    lv_obj_t *obj = lv_event_get_target(e);
-
-    if (code == ${callback.type}) {
-        ${callback.code}
-    }
+  // Generate code from template
+  return template(templateData);
 }
 
-`;
-    });
-  }
-
-  code += `/**
- * Initialize and show the UI
- */
-void ${functionName}_init(void)
-{
-    lv_obj_t *screen = lv_obj_create(NULL);
-    ${functionName}(screen);
-    lv_scr_load(screen);
-}
-`;
-
-  return code;
-}
-
-function generateMultiPageCCode(projectData) {
+async function generateMultiPageCCode(projectData) {
   const { projectName, pages, assets } = projectData;
   const baseName = sanitizeIdentifier(projectName || 'ui');
 
-  let code = `/*
- * Auto-generated LVGL UI Code (Multi-Page)
- * Project: ${projectName}
- * Generated: ${new Date().toISOString()}
- * Pages: ${pages.length}
- * Version: 1.2.0
- */
-
-#include "lvgl.h"
-
-`;
-
   // Collect all event callbacks from all pages
-  const allEventCallbacks = new Set();
+  const allEventCallbacksSet = new Set();
   pages.forEach((page) => {
     page.widgets?.forEach((widget) => {
       if (widget.events && widget.events.length > 0) {
@@ -403,29 +347,16 @@ function generateMultiPageCCode(projectData) {
             type: event.type,
             code: event.code || '// TODO: Implement event handler'
           });
-          allEventCallbacks.add(callbackStr);
+          allEventCallbacksSet.add(callbackStr);
         });
       }
     });
   });
 
-  // Generate forward declarations for event callbacks
-  if (allEventCallbacks.size > 0) {
-    code += `/* Event callback declarations */\n`;
-    Array.from(allEventCallbacks).forEach((callbackStr) => {
-      const callback = JSON.parse(callbackStr);
-      code += `static void ${callback.name}(lv_event_t *e);\n`;
-    });
-    code += '\n';
-  }
+  const eventCallbacks = Array.from(allEventCallbacksSet).map(str => JSON.parse(str));
 
-  // Generate screen objects array
-  code += `/* Screen objects for each page */\n`;
-  code += `static lv_obj_t *screens[${pages.length}];\n`;
-  code += `static int current_screen = 0;\n\n`;
-
-  // Generate function for each page
-  pages.forEach((page, index) => {
+  // Generate code for each page
+  const pagesData = pages.map((page, index) => {
     const pageFunctionName = `${baseName}_create_${sanitizeIdentifier(page.name)}`;
     const pageWidgets = page.widgets || [];
 
@@ -436,100 +367,38 @@ function generateMultiPageCCode(projectData) {
       return 0;
     });
 
-    code += `/**
- * Create page: ${page.name}
- * Size: ${page.canvasSize.width}x${page.canvasSize.height}
- * Widgets: ${pageWidgets.length}
- */
-void ${pageFunctionName}(lv_obj_t *parent)
-{
-    if (parent == NULL) {
-        parent = lv_scr_act();
-    }
+    // Generate widget code for this page
+    const widgetCodes = sortedWidgets.map((widget) =>
+      generateWidgetCode(widget, sortedWidgets, '    ')
+    );
 
-`;
-
-    // Generate code for each widget
-    sortedWidgets.forEach((widget) => {
-      code += generateWidgetCode(widget, sortedWidgets, '    ');
-    });
-
-    code += `}
-
-`;
+    return {
+      name: page.name,
+      functionName: pageFunctionName,
+      width: page.canvasSize.width,
+      height: page.canvasSize.height,
+      widgetCount: pageWidgets.length,
+      widgets: widgetCodes,
+    };
   });
 
-  // Generate event callback implementations
-  if (allEventCallbacks.size > 0) {
-    code += `/* Event callback implementations */\n`;
-    Array.from(allEventCallbacks).forEach((callbackStr) => {
-      const callback = JSON.parse(callbackStr);
-      code += `static void ${callback.name}(lv_event_t *e)
-{
-    lv_event_code_t code = lv_event_get_code(e);
-    lv_obj_t *obj = lv_event_get_target(e);
+  // Prepare template data
+  const templateData = {
+    projectName: projectName || 'Untitled',
+    generatedDate: new Date().toISOString(),
+    pageCount: pages.length,
+    lastPageIndex: pages.length - 1,
+    baseName,
+    hasEventCallbacks: eventCallbacks.length > 0,
+    eventCallbacks,
+    pages: pagesData,
+  };
 
-    if (code == ${callback.type}) {
-        ${callback.code}
-    }
-}
+  // Load and compile template
+  const template = await loadTemplate('c_multipage');
 
-`;
-    });
-  }
-
-  // Generate navigation functions
-  code += `/**
- * Load a specific page by index
- * @param page_index Index of the page to load (0-${pages.length - 1})
- */
-void ${baseName}_load_page(int page_index)
-{
-    if (page_index < 0 || page_index >= ${pages.length}) {
-        return;
-    }
-
-    if (screens[page_index] == NULL) {
-        screens[page_index] = lv_obj_create(NULL);
-
-        switch(page_index) {
-${pages.map((page, index) => {
-  const pageFunctionName = `${baseName}_create_${sanitizeIdentifier(page.name)}`;
-  return `            case ${index}:
-                ${pageFunctionName}(screens[${index}]);
-                break;`;
-}).join('\n')}
-        }
-    }
-
-    lv_scr_load(screens[page_index]);
-    current_screen = page_index;
-}
-
-/**
- * Get current page index
- */
-int ${baseName}_get_current_page(void)
-{
-    return current_screen;
-}
-
-/**
- * Initialize all screens and show the first page
- */
-void ${baseName}_init(void)
-{
-    // Initialize screen array
-    for (int i = 0; i < ${pages.length}; i++) {
-        screens[i] = NULL;
-    }
-
-    // Load first page
-    ${baseName}_load_page(0);
-}
-`;
-
-  return code;
+  // Generate code from template
+  return template(templateData);
 }
 
 export default generateCCode;

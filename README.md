@@ -194,7 +194,12 @@ def my_ui_create(parent=None):
 - [x] Pre-built component templates
 - [x] Template categories and organization
 - [x] Enhanced component library interface with tabs
+
+### v2.2 ✅
 - [x] Customizable code generation templates (external .hbs files)
+- [x] Template loader with automatic fallback to defaults
+- [x] Full Handlebars support for code templates
+- [x] Template editing via external files
 
 ## v2.0 Features
 
@@ -459,9 +464,11 @@ The Component Library has been redesigned with a tab-based interface:
 
 All template widgets are inserted with a small offset and can be individually selected, moved, and customized just like manually created widgets.
 
+## v2.2 Features
+
 ### 🔧 Customizable Code Generation Templates
 
-The code generators now use external template files that can be customized to match your project's coding standards and requirements.
+Version 2.2 introduces a powerful template system that allows you to fully customize the structure and format of generated C and MicroPython code by editing external template files.
 
 #### Template Files Location
 
