@@ -20,8 +20,9 @@ This demonstrates how AI-assisted development can enable developers to build sop
 
 ### 🔧 Supported Widgets
 - **Base**: Button, Label, Panel
-- **Input**: Slider, Switch, Checkbox, Textarea
-- **Display**: Progress Bar, Arc, Spinner
+- **Input**: Slider, Switch, Checkbox, Textarea, Dropdown, Roller
+- **Display**: Progress Bar, Arc, Spinner, Chart
+- **Media**: Image, Image Button
 
 ### 📤 Code Generation
 - **C Generator**: Generates optimized C code for LVGL
@@ -187,6 +188,12 @@ def my_ui_create(parent=None):
 - [x] Plugin system
 - [x] Cloud sync
 
+### v2.1 ✅
+- [x] Advanced widget library (Chart, Roller, Dropdown, Image, Image Button)
+- [x] Pre-built component templates
+- [x] Template categories and organization
+- [x] Enhanced component library interface with tabs
+
 ## v2.0 Features
 
 ### 🧩 Component Library
@@ -269,6 +276,186 @@ Work on projects in real-time with other users:
 4. Share the session ID with collaborators
 
 **Note:** Real-time collaboration requires a WebSocket server. The current version includes a demo implementation for local development.
+
+## v2.1 Features
+
+### 📊 Advanced Widget Types
+Version 2.1 introduces 5 new professional widget types for building sophisticated UIs:
+
+#### Chart Widget
+Visualize data with interactive charts:
+- **Chart Types**: Line charts and bar charts
+- **Customizable Data**: Set data points via comma-separated values
+- **Styling**: Configurable colors for background, lines, and points
+- **Interactive Points**: Toggle point visibility for line charts
+
+**Properties:**
+- Chart type (line, bar, scatter)
+- Data points (comma-separated)
+- Line/bar color
+- Background color
+- Point visibility
+
+#### Roller Widget
+Create scrollable option selectors with 3D cylinder effect:
+- **Visible Rows**: Configure how many rows are visible
+- **Selected Highlight**: Highlighted selected option
+- **Custom Options**: Define options via newline-separated text
+- **Styling**: Customize background, selected color, and text color
+
+**Properties:**
+- Options (newline-separated)
+- Selected index
+- Visible rows (default: 3)
+- Background, selected, and text colors
+
+#### Dropdown Widget
+Standard dropdown selection menus:
+- **Multiple Options**: Support for multiple selectable options
+- **Keyboard Navigation**: Full keyboard support
+- **Custom Styling**: Configurable colors and fonts
+- **Current Selection Display**: Shows currently selected option
+
+**Properties:**
+- Options (newline-separated)
+- Selected index
+- Background and text colors
+- Font size
+
+#### Image Widget
+Display images in your interface:
+- **Image Source**: Support for image URLs
+- **Fit Modes**: Contain, cover, or fill
+- **Placeholder**: Visual placeholder when no image is set
+- **Background Color**: Configurable background
+
+**Properties:**
+- Image source URL
+- Object fit mode
+- Background color
+- Width/height
+
+#### Image Button Widget
+Combine images with interactive buttons:
+- **Image + Text**: Display both image and text label
+- **Custom Styling**: Configurable colors and corner radius
+- **Flexible Layout**: Image area with text overlay
+- **Click Events**: Full event support
+
+**Properties:**
+- Image source URL
+- Button text
+- Background and text colors
+- Corner radius
+- Font size
+
+### 🎨 Pre-Built Component Templates
+Six professional templates ready to use in your projects:
+
+#### 1. Dashboard Chart 📊
+Complete analytics panel perfect for data visualization:
+- Panel container with border
+- Title label "Statistics"
+- Line chart with sample data
+- Current value indicator
+- **10 widgets** ready to customize
+
+**Use cases:** Analytics dashboards, monitoring panels, data visualization
+
+#### 2. Settings Control Panel ⚙️
+Configuration interface with multiple control types:
+- Settings panel with title
+- Brightness slider (0-100)
+- Volume slider (0-100)
+- WiFi toggle switch
+- Bluetooth toggle switch
+- **10 widgets** organized and labeled
+
+**Use cases:** Device settings, configuration screens, control panels
+
+#### 3. Image Gallery 🖼️
+Photo gallery layout with grid organization:
+- Gallery panel with title
+- 3 image placeholders (top row)
+- 3 image buttons (bottom row)
+- Customizable colors per image
+- **8 widgets** in grid layout
+
+**Use cases:** Photo galleries, product showcases, media browsers
+
+#### 4. Data Entry Form 📝
+Complete user input form with various input types:
+- Form panel with title
+- Country dropdown (8 countries)
+- Age group roller (6 age ranges)
+- Terms & conditions checkbox
+- Submit button
+- **9 widgets** with labels
+
+**Use cases:** User registration, data collection, surveys
+
+#### 5. Progress Monitor 📈
+Task tracking with multiple progress indicators:
+- Progress panel with title
+- 2 labeled progress bars (Task 1, Task 2)
+- Circular arc for overall progress
+- Loading spinner with label
+- **10 widgets** showing progress
+
+**Use cases:** Task monitoring, download progress, loading states
+
+#### 6. Navigation Menu ☰
+Vertical sidebar navigation:
+- Dark themed panel
+- Menu title
+- 5 navigation buttons with icons:
+  - 🏠 Home
+  - ⚙️ Settings
+  - 👤 Profile
+  - ✉️ Messages
+  - ❓ Help
+- **7 widgets** in sidebar layout
+
+**Use cases:** Application navigation, menu sidebars, app drawers
+
+### 📚 Enhanced Component Library Interface
+
+The Component Library has been redesigned with a tab-based interface:
+
+#### Templates Tab
+- **Pre-Built Templates**: Access all 6 professional templates
+- **Category Organization**: Templates grouped by category
+  - Data Display
+  - Controls
+  - Media
+  - Forms
+  - Navigation
+- **Template Preview**: See icon, name, description, and widget count
+- **One-Click Insert**: Add complete layouts with a single click
+- **Search**: Filter templates by name, description, or tags
+
+#### My Components Tab
+- **User-Saved Components**: Your custom saved components
+- **Component Management**: Save, insert, and delete components
+- **Import/Export**: Share component libraries
+- **Search**: Find components by name, description, or tags
+
+**Visual Enhancements:**
+- Gradient backgrounds for templates
+- Category headers with styling
+- Icon indicators for template types
+- Enhanced hover effects
+- Improved spacing and organization
+
+### 🎯 How to Use Templates
+
+1. Click the **Component Library** button (bottom-left, package icon)
+2. Switch to the **Templates** tab
+3. Browse templates by category or use search
+4. Click the **+** button on any template to insert it
+5. Customize the inserted widgets in the Properties panel
+
+All template widgets are inserted with a small offset and can be individually selected, moved, and customized just like manually created widgets.
 
 ## Contributing
 
