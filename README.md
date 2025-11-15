@@ -27,6 +27,7 @@ This demonstrates how AI-assisted development can enable developers to build sop
 ### 📤 Code Generation
 - **C Generator**: Generates optimized C code for LVGL
 - **MicroPython Generator**: Generates compatible MicroPython code
+- **Customizable Templates**: External template files that can be modified
 - **Export**: Export directly to file or copy to clipboard
 
 ### 💾 Project Management
@@ -193,6 +194,7 @@ def my_ui_create(parent=None):
 - [x] Pre-built component templates
 - [x] Template categories and organization
 - [x] Enhanced component library interface with tabs
+- [x] Customizable code generation templates (external .hbs files)
 
 ## v2.0 Features
 
@@ -456,6 +458,97 @@ The Component Library has been redesigned with a tab-based interface:
 5. Customize the inserted widgets in the Properties panel
 
 All template widgets are inserted with a small offset and can be individually selected, moved, and customized just like manually created widgets.
+
+### 🔧 Customizable Code Generation Templates
+
+The code generators now use external template files that can be customized to match your project's coding standards and requirements.
+
+#### Template Files Location
+
+Templates are stored in the `templates/` directory:
+- `c_template.hbs` - C code template (single page)
+- `micropython_template.hbs` - MicroPython template (single page)
+- `c_multipage_template.hbs` - C code template (multi-page)
+- `micropython_multipage_template.hbs` - MicroPython template (multi-page)
+
+#### How to Customize Templates
+
+1. Navigate to the `templates/` folder in your installation directory
+2. Open any `.hbs` (Handlebars) template file in a text editor
+3. Modify the template structure while preserving the variable placeholders
+4. Save the file - changes will be used in the next code generation
+
+#### Template Variables
+
+Templates use Handlebars syntax with the following variables:
+
+**Common Variables:**
+- `{{projectName}}` - Name of the project
+- `{{generatedDate}}` - ISO timestamp of code generation
+- `{{canvasWidth}}`, `{{canvasHeight}}` - Canvas dimensions
+- `{{functionName}}` - Sanitized function name
+- `{{hasEventCallbacks}}` - Boolean for event callbacks presence
+
+**Widget Data:**
+- `{{#each widgets}}...{{/each}}` - Loop through all widgets
+- `{{{this}}}` - Raw widget code (triple braces preserve formatting)
+
+**Event Callbacks:**
+- `{{#each eventCallbacks}}...{{/each}}` - Loop through event callbacks
+- `{{this.name}}` - Callback function name
+- `{{this.type}}` - Event type constant
+- `{{this.code}}` - User-defined callback code
+- `{{this.eventType}}` - Event type for MicroPython (without LV_EVENT_ prefix)
+
+**Multi-Page Variables:**
+- `{{pageCount}}` - Total number of pages
+- `{{lastPageIndex}}` - Index of last page (pageCount - 1)
+- `{{baseName}}` - Base name for functions
+- `{{#each pages}}...{{/each}}` - Loop through pages
+  - `{{this.name}}` - Page name
+  - `{{this.functionName}}` - Page function name
+  - `{{this.width}}`, `{{this.height}}` - Page dimensions
+  - `{{this.widgetCount}}` - Number of widgets in page
+  - `{{this.widgets}}` - Widget code array
+
+#### Example Customizations
+
+**Add a custom header:**
+```handlebars
+/*
+ * Company: My Company
+ * Author: {{author}}
+ * Project: {{projectName}}
+ * Generated: {{generatedDate}}
+ */
+```
+
+**Change function naming:**
+```handlebars
+void create_{{projectName}}_ui(lv_obj_t *parent)
+```
+
+**Add custom includes:**
+```handlebars
+#include "lvgl.h"
+#include "my_custom_widgets.h"
+#include "project_config.h"
+```
+
+**Modify code structure:**
+You can reorganize the generated code structure, add comments, change indentation, or include project-specific boilerplate.
+
+#### Reset to Defaults
+
+If you need to reset a template to its original state, simply delete the template file. The system will automatically use the built-in default template.
+
+#### Notes
+
+- Templates are loaded at code generation time
+- Invalid templates will fall back to defaults with a warning
+- Use triple braces `{{{variable}}}` for raw output (preserves formatting)
+- Use double braces `{{variable}}` for escaped output
+- Handlebars helpers like `{{#if}}`, `{{#each}}`, `{{#unless}}` are supported
 
 ## Contributing
 

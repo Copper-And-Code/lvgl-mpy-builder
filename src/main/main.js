@@ -325,3 +325,29 @@ ipcMain.handle('export-code', async (event, { code, filename, language }) => {
     return { success: false, error: error.message };
   }
 });
+
+// IPC Handlers for template file operations
+ipcMain.handle('read-file', async (event, filePath) => {
+  try {
+    const fullPath = path.join(app.getAppPath(), filePath);
+    const data = fs.readFileSync(fullPath, 'utf-8');
+    return data;
+  } catch (error) {
+    throw new Error(`Could not read file ${filePath}: ${error.message}`);
+  }
+});
+
+ipcMain.handle('write-file', async (event, filePath, content) => {
+  try {
+    const fullPath = path.join(app.getAppPath(), filePath);
+    // Ensure directory exists
+    const dir = path.dirname(fullPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(fullPath, content, 'utf-8');
+    return true;
+  } catch (error) {
+    throw new Error(`Could not write file ${filePath}: ${error.message}`);
+  }
+});
