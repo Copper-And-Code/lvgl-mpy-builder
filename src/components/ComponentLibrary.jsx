@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import useStore from '../core/store';
-import { Package, Plus, Trash2, Download, Upload, Search, Tag } from 'lucide-react';
+import { Package, Plus, Trash2, Download, Upload, Search, Tag, BookOpen } from 'lucide-react';
+import { componentTemplates, getTemplatesByCategory } from '../core/componentTemplates';
 import '../styles/ComponentLibrary.css';
 
 export default function ComponentLibrary() {
@@ -10,6 +11,7 @@ export default function ComponentLibrary() {
   const [componentDescription, setComponentDescription] = useState('');
   const [componentTags, setComponentTags] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('templates'); // 'templates' or 'saved'
 
   const componentLibrary = useStore((state) => state.componentLibrary);
   const saveAsComponent = useStore((state) => state.saveAsComponent);
@@ -36,6 +38,23 @@ export default function ComponentLibrary() {
 
   const handleInsertComponent = (componentId) => {
     insertComponent(componentId, { x: 50, y: 50 });
+  };
+
+  const handleInsertTemplate = (template) => {
+    // Insert template directly by adding widgets to canvas with new IDs
+    const widgets = useStore.getState().widgets;
+    const addWidget = useStore.getState().addWidget;
+
+    template.widgets.forEach((widget, index) => {
+      // Use addWidget to properly add each widget with a new ID
+      const offsetX = 50 + (index * 5);
+      const offsetY = 50 + (index * 5);
+      addWidget(widget.type, {
+        ...widget.props,
+        x: widget.props.x + offsetX,
+        y: widget.props.y + offsetY,
+      });
+    });
   };
 
   const handleExportLibrary = () => {
@@ -74,6 +93,17 @@ export default function ComponentLibrary() {
     );
   });
 
+  const filteredTemplates = componentTemplates.filter(template => {
+    const query = searchQuery.toLowerCase();
+    return (
+      template.name.toLowerCase().includes(query) ||
+      template.description.toLowerCase().includes(query) ||
+      template.tags.some(tag => tag.toLowerCase().includes(query))
+    );
+  });
+
+  const templatesByCategory = getTemplatesByCategory();
+
   return (
     <>
       <button
@@ -94,89 +124,201 @@ export default function ComponentLibrary() {
             <button onClick={() => setIsOpen(false)}>×</button>
           </div>
 
-          <div className="component-library-toolbar">
+          <div className="component-library-tabs">
             <button
-              onClick={() => setShowSaveDialog(true)}
-              disabled={!selectedWidgetId}
-              title="Save selected widget as component"
+              className={activeTab === 'templates' ? 'active' : ''}
+              onClick={() => setActiveTab('templates')}
             >
-              <Plus size={16} />
-              Save Component
+              <BookOpen size={16} />
+              Templates
             </button>
-            <button onClick={handleExportLibrary} title="Export library">
-              <Download size={16} />
+            <button
+              className={activeTab === 'saved' ? 'active' : ''}
+              onClick={() => setActiveTab('saved')}
+            >
+              <Package size={16} />
+              My Components
             </button>
-            <label className="import-button" title="Import library">
-              <Upload size={16} />
-              <input
-                type="file"
-                accept=".json"
-                onChange={handleImportLibrary}
-                style={{ display: 'none' }}
-              />
-            </label>
           </div>
+
+          {activeTab === 'saved' && (
+            <div className="component-library-toolbar">
+              <button
+                onClick={() => setShowSaveDialog(true)}
+                disabled={!selectedWidgetId}
+                title="Save selected widget as component"
+              >
+                <Plus size={16} />
+                Save Component
+              </button>
+              <button onClick={handleExportLibrary} title="Export library">
+                <Download size={16} />
+              </button>
+              <label className="import-button" title="Import library">
+                <Upload size={16} />
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleImportLibrary}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            </div>
+          )}
 
           <div className="component-search">
             <Search size={16} />
             <input
               type="text"
-              placeholder="Search components..."
+              placeholder={activeTab === 'templates' ? 'Search templates...' : 'Search components...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
           <div className="component-list">
-            {filteredComponents.length === 0 ? (
-              <div className="component-empty">
-                <p>No components yet</p>
-                <p>Select a widget and click "Save Component"</p>
-              </div>
-            ) : (
-              filteredComponents.map((component) => (
-                <div key={component.id} className="component-item">
-                  <div className="component-info">
-                    <h4>{component.name}</h4>
-                    {component.description && (
-                      <p className="component-description">{component.description}</p>
-                    )}
-                    {component.tags.length > 0 && (
-                      <div className="component-tags">
-                        {component.tags.map((tag, idx) => (
-                          <span key={idx} className="component-tag">
-                            <Tag size={12} />
-                            {tag}
-                          </span>
-                        ))}
+            {activeTab === 'templates' ? (
+              // Templates view
+              searchQuery ? (
+                // Filtered templates
+                filteredTemplates.length === 0 ? (
+                  <div className="component-empty">
+                    <p>No templates found</p>
+                    <p>Try a different search term</p>
+                  </div>
+                ) : (
+                  filteredTemplates.map((template) => (
+                    <div key={template.id} className="component-item template-item">
+                      <div className="component-info">
+                        <h4>
+                          <span className="template-icon">{template.icon}</span>
+                          {template.name}
+                        </h4>
+                        {template.description && (
+                          <p className="component-description">{template.description}</p>
+                        )}
+                        {template.tags.length > 0 && (
+                          <div className="component-tags">
+                            {template.tags.map((tag, idx) => (
+                              <span key={idx} className="component-tag">
+                                <Tag size={12} />
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="component-meta">
+                          {template.widgets.length} widget{template.widgets.length !== 1 ? 's' : ''}
+                          {template.category && ` • ${template.category}`}
+                        </div>
                       </div>
-                    )}
-                    <div className="component-meta">
-                      {component.widgets.length} widget{component.widgets.length !== 1 ? 's' : ''}
+                      <div className="component-actions">
+                        <button
+                          onClick={() => handleInsertTemplate(template)}
+                          title="Insert template"
+                          className="btn-insert"
+                        >
+                          <Plus size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )
+              ) : (
+                // Templates by category
+                Object.entries(templatesByCategory).map(([category, templates]) => (
+                  <div key={category} className="template-category">
+                    <h4 className="category-title">{category}</h4>
+                    {templates.map((template) => (
+                      <div key={template.id} className="component-item template-item">
+                        <div className="component-info">
+                          <h4>
+                            <span className="template-icon">{template.icon}</span>
+                            {template.name}
+                          </h4>
+                          {template.description && (
+                            <p className="component-description">{template.description}</p>
+                          )}
+                          {template.tags.length > 0 && (
+                            <div className="component-tags">
+                              {template.tags.map((tag, idx) => (
+                                <span key={idx} className="component-tag">
+                                  <Tag size={12} />
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          <div className="component-meta">
+                            {template.widgets.length} widget{template.widgets.length !== 1 ? 's' : ''}
+                          </div>
+                        </div>
+                        <div className="component-actions">
+                          <button
+                            onClick={() => handleInsertTemplate(template)}
+                            title="Insert template"
+                            className="btn-insert"
+                          >
+                            <Plus size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))
+              )
+            ) : (
+              // Saved components view
+              filteredComponents.length === 0 ? (
+                <div className="component-empty">
+                  <p>No components yet</p>
+                  <p>Select a widget and click "Save Component"</p>
+                </div>
+              ) : (
+                filteredComponents.map((component) => (
+                  <div key={component.id} className="component-item">
+                    <div className="component-info">
+                      <h4>{component.name}</h4>
+                      {component.description && (
+                        <p className="component-description">{component.description}</p>
+                      )}
+                      {component.tags.length > 0 && (
+                        <div className="component-tags">
+                          {component.tags.map((tag, idx) => (
+                            <span key={idx} className="component-tag">
+                              <Tag size={12} />
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="component-meta">
+                        {component.widgets.length} widget{component.widgets.length !== 1 ? 's' : ''}
+                      </div>
+                    </div>
+                    <div className="component-actions">
+                      <button
+                        onClick={() => handleInsertComponent(component.id)}
+                        title="Insert component"
+                        className="btn-insert"
+                      >
+                        <Plus size={16} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm(`Delete component "${component.name}"?`)) {
+                            deleteComponent(component.id);
+                          }
+                        }}
+                        title="Delete component"
+                        className="btn-delete"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </div>
                   </div>
-                  <div className="component-actions">
-                    <button
-                      onClick={() => handleInsertComponent(component.id)}
-                      title="Insert component"
-                      className="btn-insert"
-                    >
-                      <Plus size={16} />
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (confirm(`Delete component "${component.name}"?`)) {
-                          deleteComponent(component.id);
-                        }
-                      }}
-                      title="Delete component"
-                      className="btn-delete"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))
+                ))
+              )
             )}
           </div>
         </div>
