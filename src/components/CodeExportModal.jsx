@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import useStore from '../core/store';
 import { generateCCode } from '../generators/cGenerator';
 import { generateMicroPythonCode } from '../generators/micropythonGenerator';
@@ -6,13 +6,28 @@ import { generateMicroPythonCode } from '../generators/micropythonGenerator';
 const CodeExportModal = ({ onClose }) => {
   const { getProjectData } = useStore();
   const [language, setLanguage] = useState('c');
+  const [code, setCode] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
   const projectData = useMemo(() => getProjectData(), []);
 
-  const code = useMemo(() => {
-    return language === 'c'
-      ? generateCCode(projectData)
-      : generateMicroPythonCode(projectData);
+  useEffect(() => {
+    const generateCode = async () => {
+      setIsLoading(true);
+      try {
+        const generatedCode = language === 'c'
+          ? await generateCCode(projectData)
+          : await generateMicroPythonCode(projectData);
+        setCode(generatedCode);
+      } catch (error) {
+        console.error('Error generating code:', error);
+        setCode(`// Error generating code: ${error.message}`);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    generateCode();
   }, [language, projectData]);
 
   const handleCopy = () => {
@@ -70,19 +85,25 @@ const CodeExportModal = ({ onClose }) => {
             </label>
 
             <div className="export-actions">
-              <button className="btn-secondary" onClick={handleCopy}>
+              <button className="btn-secondary" onClick={handleCopy} disabled={isLoading}>
                 📋 Copy to Clipboard
               </button>
-              <button className="btn-primary" onClick={handleExport}>
+              <button className="btn-primary" onClick={handleExport} disabled={isLoading}>
                 💾 Export to File
               </button>
             </div>
           </div>
 
           <div className="code-preview">
-            <pre>
-              <code>{code}</code>
-            </pre>
+            {isLoading ? (
+              <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
+                Generating code...
+              </div>
+            ) : (
+              <pre>
+                <code>{code}</code>
+              </pre>
+            )}
           </div>
         </div>
 
