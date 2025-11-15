@@ -37,7 +37,7 @@ function setupContentSecurityPolicy() {
     const csp = process.env.NODE_ENV === 'development'
       ? [
           "default-src 'self'",
-          "script-src 'self' 'unsafe-inline' http://localhost:* ws://localhost:*",
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* ws://localhost:*",
           "style-src 'self' 'unsafe-inline'",
           "img-src 'self' data: blob:",
           "font-src 'self' data:",
@@ -45,7 +45,7 @@ function setupContentSecurityPolicy() {
         ].join('; ')
       : [
           "default-src 'self'",
-          "script-src 'self' 'unsafe-inline'",
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
           "style-src 'self' 'unsafe-inline'",
           "img-src 'self' data: blob:",
           "font-src 'self' data:",
