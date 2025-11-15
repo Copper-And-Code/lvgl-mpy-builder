@@ -1,4 +1,5 @@
 // MicroPython Code Generator for LVGL
+import { loadTemplate } from './templateLoader';
 
 function hexToRgb(hex) {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -267,7 +268,7 @@ function generateWidgetCode(widget, widgets, indent = '    ') {
   return lines.join('\n');
 }
 
-export function generateMicroPythonCode(projectData) {
+export async function generateMicroPythonCode(projectData) {
   const { projectName, widgets, canvasSize, pages, version } = projectData;
   const functionName = sanitizeIdentifier(projectName || 'ui') + '_create';
 
@@ -275,14 +276,14 @@ export function generateMicroPythonCode(projectData) {
   const isMultiPage = pages && pages.length > 0;
 
   if (isMultiPage) {
-    return generateMultiPageMicroPythonCode(projectData);
+    return await generateMultiPageMicroPythonCode(projectData);
   }
 
   // Legacy single-page generation
-  return generateSinglePageMicroPythonCode(projectData);
+  return await generateSinglePageMicroPythonCode(projectData);
 }
 
-function generateSinglePageMicroPythonCode(projectData) {
+async function generateSinglePageMicroPythonCode(projectData) {
   const { projectName, widgets, canvasSize } = projectData;
   const functionName = sanitizeIdentifier(projectName || 'ui') + '_create';
 
@@ -294,138 +295,75 @@ function generateSinglePageMicroPythonCode(projectData) {
   });
 
   // Collect all unique event callbacks
-  const eventCallbacks = new Set();
+  const eventCallbacksSet = new Set();
   sortedWidgets.forEach((widget) => {
     if (widget.events && widget.events.length > 0) {
       widget.events.forEach((event) => {
-        eventCallbacks.add({
+        const eventType = event.type.replace('LV_EVENT_', '').toUpperCase();
+        const callbackStr = JSON.stringify({
           name: sanitizeIdentifier(event.callback),
           type: event.type,
+          eventType: eventType,
           code: event.code || '# TODO: Implement event handler'
         });
+        eventCallbacksSet.add(callbackStr);
       });
     }
   });
 
-  let code = `"""
-Auto-generated LVGL UI Code for MicroPython
-Project: ${projectName}
-Generated: ${new Date().toISOString()}
-Display Size: ${canvasSize.width}x${canvasSize.height}
-"""
+  const eventCallbacks = Array.from(eventCallbacksSet).map(str => JSON.parse(str));
 
-import lvgl as lv
+  // Generate widget code
+  const widgetCodes = sortedWidgets.map((widget) =>
+    generateWidgetCode(widget, sortedWidgets, '    ')
+  );
 
-`;
+  // Prepare template data
+  const templateData = {
+    projectName: projectName || 'Untitled',
+    generatedDate: new Date().toISOString(),
+    canvasWidth: canvasSize.width,
+    canvasHeight: canvasSize.height,
+    functionName,
+    hasEventCallbacks: eventCallbacks.length > 0,
+    eventCallbacks,
+    widgets: widgetCodes,
+  };
 
-  // Generate event callback implementations
-  if (eventCallbacks.size > 0) {
-    code += `# Event callback implementations\n`;
-    Array.from(eventCallbacks).forEach((callback) => {
-      const eventType = callback.type.replace('LV_EVENT_', '').toUpperCase();
-      code += `def ${callback.name}(e):
-    """Event handler for ${callback.type}"""
-    code = e.get_code()
-    obj = e.get_target()
+  // Load and compile template
+  const template = await loadTemplate('micropython');
 
-    if code == lv.EVENT.${eventType}:
-        ${callback.code}
-
-`;
-    });
-  }
-
-  code += `def ${functionName}(parent=None):
-    """
-    Create the UI for ${projectName}
-
-    Args:
-        parent: Parent object (use lv.scr_act() for screen)
-    """
-    if parent is None:
-        parent = lv.scr_act()
-
-`;
-
-  // Generate code for each widget
-  sortedWidgets.forEach((widget) => {
-    code += generateWidgetCode(widget, sortedWidgets, '    ');
-  });
-
-  code += `
-def ${functionName}_init():
-    """
-    Initialize and show the UI
-    """
-    screen = lv.obj()
-    ${functionName}(screen)
-    lv.scr_load(screen)
-
-# Example usage:
-# ${functionName}_init()
-`;
-
-  return code;
+  // Generate code from template
+  return template(templateData);
 }
 
-function generateMultiPageMicroPythonCode(projectData) {
+async function generateMultiPageMicroPythonCode(projectData) {
   const { projectName, pages, assets } = projectData;
   const baseName = sanitizeIdentifier(projectName || 'ui');
 
-  let code = `"""
-Auto-generated LVGL UI Code for MicroPython (Multi-Page)
-Project: ${projectName}
-Generated: ${new Date().toISOString()}
-Pages: ${pages.length}
-Version: 1.2.0
-"""
-
-import lvgl as lv
-
-`;
-
   // Collect all event callbacks from all pages
-  const allEventCallbacks = new Set();
+  const allEventCallbacksSet = new Set();
   pages.forEach((page) => {
     page.widgets?.forEach((widget) => {
       if (widget.events && widget.events.length > 0) {
         widget.events.forEach((event) => {
+          const eventType = event.type.replace('LV_EVENT_', '').toUpperCase();
           const callbackStr = JSON.stringify({
             name: sanitizeIdentifier(event.callback),
             type: event.type,
+            eventType: eventType,
             code: event.code || '# TODO: Implement event handler'
           });
-          allEventCallbacks.add(callbackStr);
+          allEventCallbacksSet.add(callbackStr);
         });
       }
     });
   });
 
-  // Generate event callback implementations
-  if (allEventCallbacks.size > 0) {
-    code += `# Event callback implementations\n`;
-    Array.from(allEventCallbacks).forEach((callbackStr) => {
-      const callback = JSON.parse(callbackStr);
-      const eventType = callback.type.replace('LV_EVENT_', '').toUpperCase();
-      code += `def ${callback.name}(e):
-    """Event handler for ${callback.type}"""
-    code = e.get_code()
-    obj = e.get_target()
+  const eventCallbacks = Array.from(allEventCallbacksSet).map(str => JSON.parse(str));
 
-    if code == lv.EVENT.${eventType}:
-        ${callback.code}
-
-`;
-    });
-  }
-
-  // Generate screen objects
-  code += `# Screen objects for each page\n`;
-  code += `screens = [None] * ${pages.length}\n`;
-  code += `current_screen = 0\n\n`;
-
-  // Generate function for each page
-  pages.forEach((page, index) => {
+  // Generate code for each page
+  const pagesData = pages.map((page, index) => {
     const pageFunctionName = `${baseName}_create_${sanitizeIdentifier(page.name)}`;
     const pageWidgets = page.widgets || [];
 
@@ -436,74 +374,38 @@ import lvgl as lv
       return 0;
     });
 
-    code += `def ${pageFunctionName}(parent=None):
-    """
-    Create page: ${page.name}
-    Size: ${page.canvasSize.width}x${page.canvasSize.height}
-    Widgets: ${pageWidgets.length}
-    """
-    if parent is None:
-        parent = lv.scr_act()
+    // Generate widget code for this page
+    const widgetCodes = sortedWidgets.map((widget) =>
+      generateWidgetCode(widget, sortedWidgets, '    ')
+    );
 
-`;
-
-    // Generate code for each widget
-    sortedWidgets.forEach((widget) => {
-      code += generateWidgetCode(widget, sortedWidgets, '    ');
-    });
-
-    code += `\n`;
+    return {
+      name: page.name,
+      functionName: pageFunctionName,
+      width: page.canvasSize.width,
+      height: page.canvasSize.height,
+      widgetCount: pageWidgets.length,
+      widgets: widgetCodes,
+    };
   });
 
-  // Generate navigation functions
-  code += `def ${baseName}_load_page(page_index):
-    """
-    Load a specific page by index
+  // Prepare template data
+  const templateData = {
+    projectName: projectName || 'Untitled',
+    generatedDate: new Date().toISOString(),
+    pageCount: pages.length,
+    lastPageIndex: pages.length - 1,
+    baseName,
+    hasEventCallbacks: eventCallbacks.length > 0,
+    eventCallbacks,
+    pages: pagesData,
+  };
 
-    Args:
-        page_index: Index of the page to load (0-${pages.length - 1})
-    """
-    global screens, current_screen
+  // Load and compile template
+  const template = await loadTemplate('micropython_multipage');
 
-    if page_index < 0 or page_index >= ${pages.length}:
-        return
-
-    if screens[page_index] is None:
-        screens[page_index] = lv.obj()
-
-        # Create the page based on index
-${pages.map((page, index) => {
-  const pageFunctionName = `${baseName}_create_${sanitizeIdentifier(page.name)}`;
-  return `        ${index === 0 ? 'if' : 'elif'} page_index == ${index}:
-            ${pageFunctionName}(screens[${index}])`;
-}).join('\n')}
-
-    lv.scr_load(screens[page_index])
-    current_screen = page_index
-
-def ${baseName}_get_current_page():
-    """Get current page index"""
-    return current_screen
-
-def ${baseName}_init():
-    """
-    Initialize all screens and show the first page
-    """
-    global screens, current_screen
-
-    # Initialize screen array
-    screens = [None] * ${pages.length}
-    current_screen = 0
-
-    # Load first page
-    ${baseName}_load_page(0)
-
-# Example usage:
-# ${baseName}_init()
-# ${baseName}_load_page(1)  # Switch to page 1
-`;
-
-  return code;
+  // Generate code from template
+  return template(templateData);
 }
 
 export default generateMicroPythonCode;
