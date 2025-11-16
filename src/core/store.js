@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import { createWidget } from './widgetDefinitions';
+import { DEFAULT_ARCHITECTURE } from '../generators/templateLoader';
 
 const useStore = create((set, get) => ({
   // Project state
   projectName: 'Untitled Project',
   projectPath: null,
+  targetArchitecture: DEFAULT_ARCHITECTURE, // v2.3: Target architecture for code generation
 
   // Multi-page support (v1.2)
   pages: [
@@ -45,6 +47,8 @@ const useStore = create((set, get) => ({
   setProjectName: (name) => set({ projectName: name }),
 
   setProjectPath: (path) => set({ projectPath: path }),
+
+  setTargetArchitecture: (architecture) => set({ targetArchitecture: architecture }),
 
   setCanvasSize: (size) => set({ canvasSize: size }),
 
@@ -502,7 +506,8 @@ const useStore = create((set, get) => ({
       currentPageId: state.currentPageId,
       assets: state.assets,
       componentLibrary: state.componentLibrary,
-      version: '2.0.0',
+      targetArchitecture: state.targetArchitecture,
+      version: '2.3.0',
       createdAt: new Date().toISOString(),
     };
   },
@@ -511,6 +516,7 @@ const useStore = create((set, get) => ({
     set({
       projectName: 'Untitled Project',
       projectPath: null,
+      targetArchitecture: DEFAULT_ARCHITECTURE,
       pages: [{
         id: 'page_1',
         name: 'Main Screen',

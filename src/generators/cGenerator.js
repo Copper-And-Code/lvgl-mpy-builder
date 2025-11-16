@@ -1,5 +1,5 @@
 // C Code Generator for LVGL
-import { loadTemplate } from './templateLoader';
+import { loadTemplate, DEFAULT_ARCHITECTURE } from './templateLoader';
 
 function hexToRgb(hex) {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -264,7 +264,7 @@ function getWidgetParentVarName(widget, widgets) {
   return parentWidget ? sanitizeIdentifier(parentWidget.name) : 'parent';
 }
 
-export async function generateCCode(projectData) {
+export async function generateCCode(projectData, architecture = DEFAULT_ARCHITECTURE) {
   const { projectName, widgets, canvasSize, pages, version } = projectData;
   const functionName = sanitizeIdentifier(projectName || 'ui') + '_create';
 
@@ -272,14 +272,14 @@ export async function generateCCode(projectData) {
   const isMultiPage = pages && pages.length > 0;
 
   if (isMultiPage) {
-    return await generateMultiPageCCode(projectData);
+    return await generateMultiPageCCode(projectData, architecture);
   }
 
   // Legacy single-page generation
-  return await generateSinglePageCCode(projectData);
+  return await generateSinglePageCCode(projectData, architecture);
 }
 
-async function generateSinglePageCCode(projectData) {
+async function generateSinglePageCCode(projectData, architecture = DEFAULT_ARCHITECTURE) {
   const { projectName, widgets, canvasSize } = projectData;
   const functionName = sanitizeIdentifier(projectName || 'ui') + '_create';
 
@@ -326,13 +326,13 @@ async function generateSinglePageCCode(projectData) {
   };
 
   // Load and compile template
-  const template = await loadTemplate('c');
+  const template = await loadTemplate('c', architecture);
 
   // Generate code from template
   return template(templateData);
 }
 
-async function generateMultiPageCCode(projectData) {
+async function generateMultiPageCCode(projectData, architecture = DEFAULT_ARCHITECTURE) {
   const { projectName, pages, assets } = projectData;
   const baseName = sanitizeIdentifier(projectName || 'ui');
 
@@ -395,7 +395,7 @@ async function generateMultiPageCCode(projectData) {
   };
 
   // Load and compile template
-  const template = await loadTemplate('c_multipage');
+  const template = await loadTemplate('c_multipage', architecture);
 
   // Generate code from template
   return template(templateData);

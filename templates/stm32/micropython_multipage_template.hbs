@@ -1,0 +1,91 @@
+"""
+Auto-generated LVGL UI Code for MicroPython on STM32 (Multi-Page)
+Project: {{projectName}}
+Generated: {{generatedDate}}
+Pages: {{pageCount}}
+Target: STM32 with MicroPython
+Version: 1.2.0
+
+This is a customizable template file for multi-page STM32 MicroPython projects.
+You can modify this file to change the structure of the generated code.
+"""
+
+import lvgl as lv
+
+{{#if hasEventCallbacks}}
+# Event callback implementations
+{{#each eventCallbacks}}
+def {{this.name}}(e):
+    """Event handler for {{this.type}}"""
+    code = e.get_code()
+    obj = e.get_target()
+
+    if code == lv.EVENT.{{this.eventType}}:
+        {{this.code}}
+
+{{/each}}
+{{/if}}
+# Screen objects for each page
+screens = [None] * {{pageCount}}
+current_screen = 0
+
+{{#each pages}}
+def {{this.functionName}}(parent=None):
+    """
+    Create page: {{this.name}}
+    Size: {{this.width}}x{{this.height}}
+    Widgets: {{this.widgetCount}}
+    """
+    if parent is None:
+        parent = lv.scr_act()
+
+{{#each this.widgets}}
+{{{this}}}
+{{/each}}
+
+{{/each}}
+def {{baseName}}_load_page(page_index):
+    """
+    Load a specific page by index
+
+    Args:
+        page_index: Index of the page to load (0-{{lastPageIndex}})
+    """
+    global screens, current_screen
+
+    if page_index < 0 or page_index >= {{pageCount}}:
+        return
+
+    if screens[page_index] is None:
+        screens[page_index] = lv.obj()
+
+        # Create the page based on index
+{{#each pages}}
+        {{#if @first}}if{{else}}elif{{/if}} page_index == {{@index}}:
+            {{this.functionName}}(screens[{{@index}}])
+{{/each}}
+
+    lv.scr_load(screens[page_index])
+    current_screen = page_index
+
+def {{baseName}}_get_current_page():
+    """Get current page index"""
+    return current_screen
+
+def {{baseName}}_init():
+    """
+    Initialize all screens and show the first page
+    Call this after LVGL and display are initialized
+    """
+    global screens, current_screen
+
+    # Initialize screen array
+    screens = [None] * {{pageCount}}
+    current_screen = 0
+
+    # Load first page
+    {{baseName}}_load_page(0)
+
+# Example usage:
+# {{baseName}}_init()
+# {{baseName}}_load_page(1)  # Switch to page 1
