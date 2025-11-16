@@ -1,0 +1,107 @@
+/*
+ * Auto-generated LVGL UI Code for STM32 (Multi-Page)
+ * Project: {{projectName}}
+ * Generated: {{generatedDate}}
+ * Pages: {{pageCount}}
+ * Target: STM32 with LVGL
+ * Version: 1.2.0
+ *
+ * This is a customizable template file for multi-page STM32 projects.
+ * You can modify this file to change the structure of the generated code.
+ */
+
+#include "lvgl.h"
+#include "main.h"  // STM32 HAL includes
+
+{{#if hasEventCallbacks}}
+/* Event callback declarations */
+{{#each eventCallbacks}}
+static void {{this.name}}(lv_event_t *e);
+{{/each}}
+
+{{/if}}
+/* Screen objects for each page */
+static lv_obj_t *screens[{{pageCount}}];
+static int current_screen = 0;
+
+{{#each pages}}
+/**
+ * Create page: {{this.name}}
+ * Size: {{this.width}}x{{this.height}}
+ * Widgets: {{this.widgetCount}}
+ */
+void {{this.functionName}}(lv_obj_t *parent)
+{
+    if (parent == NULL) {
+        parent = lv_scr_act();
+    }
+
+{{#each this.widgets}}
+{{{this}}}
+{{/each}}
+}
+
+{{/each}}
+{{#if hasEventCallbacks}}
+/* Event callback implementations */
+{{#each eventCallbacks}}
+static void {{this.name}}(lv_event_t *e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t *obj = lv_event_get_target(e);
+
+    if (code == {{this.type}}) {
+        {{this.code}}
+    }
+}
+
+{{/each}}
+{{/if}}
+/**
+ * Load a specific page by index
+ * @param page_index Index of the page to load (0-{{lastPageIndex}})
+ */
+void {{baseName}}_load_page(int page_index)
+{
+    if (page_index < 0 || page_index >= {{pageCount}}) {
+        return;
+    }
+
+    if (screens[page_index] == NULL) {
+        screens[page_index] = lv_obj_create(NULL);
+
+        switch(page_index) {
+{{#each pages}}
+            case {{@index}}:
+                {{this.functionName}}(screens[{{@index}}]);
+                break;
+{{/each}}
+        }
+    }
+
+    lv_scr_load(screens[page_index]);
+    current_screen = page_index;
+}
+
+/**
+ * Get current page index
+ */
+int {{baseName}}_get_current_page(void)
+{
+    return current_screen;
+}
+
+/**
+ * Initialize all screens and show the first page
+ * Call this after LVGL and display are initialized
+ */
+void {{baseName}}_init(void)
+{
+    // Initialize screen array
+    for (int i = 0; i < {{pageCount}}; i++) {
+        screens[i] = NULL;
+    }
+
+    // Load first page
+    {{baseName}}_load_page(0);
+}

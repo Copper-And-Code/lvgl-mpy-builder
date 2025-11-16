@@ -2,22 +2,25 @@ import React, { useState, useEffect, useMemo } from 'react';
 import useStore from '../core/store';
 import { generateCCode } from '../generators/cGenerator';
 import { generateMicroPythonCode } from '../generators/micropythonGenerator';
+import { getAvailableArchitectures } from '../generators/templateLoader';
 
 const CodeExportModal = ({ onClose }) => {
-  const { getProjectData } = useStore();
+  const { getProjectData, targetArchitecture, setTargetArchitecture } = useStore();
   const [language, setLanguage] = useState('c');
+  const [architecture, setArchitecture] = useState(targetArchitecture);
   const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   const projectData = useMemo(() => getProjectData(), []);
+  const availableArchitectures = useMemo(() => getAvailableArchitectures(), []);
 
   useEffect(() => {
     const generateCode = async () => {
       setIsLoading(true);
       try {
         const generatedCode = language === 'c'
-          ? await generateCCode(projectData)
-          : await generateMicroPythonCode(projectData);
+          ? await generateCCode(projectData, architecture)
+          : await generateMicroPythonCode(projectData, architecture);
         setCode(generatedCode);
       } catch (error) {
         console.error('Error generating code:', error);
@@ -28,7 +31,12 @@ const CodeExportModal = ({ onClose }) => {
     };
 
     generateCode();
-  }, [language, projectData]);
+  }, [language, architecture, projectData]);
+
+  // Update store when architecture changes
+  useEffect(() => {
+    setTargetArchitecture(architecture);
+  }, [architecture, setTargetArchitecture]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(code);
@@ -81,6 +89,17 @@ const CodeExportModal = ({ onClose }) => {
               <select value={language} onChange={(e) => setLanguage(e.target.value)}>
                 <option value="c">C</option>
                 <option value="micropython">MicroPython</option>
+              </select>
+            </label>
+
+            <label>
+              Target Architecture:
+              <select value={architecture} onChange={(e) => setArchitecture(e.target.value)}>
+                {availableArchitectures.map((arch) => (
+                  <option key={arch.id} value={arch.id}>
+                    {arch.name} - {arch.description}
+                  </option>
+                ))}
               </select>
             </label>
 

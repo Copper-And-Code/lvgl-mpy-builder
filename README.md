@@ -201,6 +201,13 @@ def my_ui_create(parent=None):
 - [x] Full Handlebars support for code templates
 - [x] Template editing via external files
 
+### v2.3 ✅
+- [x] Multi-architecture template system (Unix, STM32, ESP32)
+- [x] Architecture selector in code export dialog
+- [x] Organized template directory structure by architecture
+- [x] Persistent architecture preference per project
+- [x] Easy addition of custom architectures
+
 ## v2.0 Features
 
 ### 🧩 Component Library
@@ -470,9 +477,16 @@ All template widgets are inserted with a small offset and can be individually se
 
 Version 2.2 introduces a powerful template system that allows you to fully customize the structure and format of generated C and MicroPython code by editing external template files.
 
-#### Template Files Location
+**Note:** Starting with v2.3, templates are organized by architecture. See the v2.3 section for the updated directory structure.
 
-Templates are stored in the `templates/` directory:
+#### Template Files Location (Updated in v2.3)
+
+Templates are now organized by target architecture in subdirectories:
+- `templates/unix/` - Generic Unix/Linux templates
+- `templates/stm32/` - STM32 microcontroller templates
+- `templates/esp32/` - ESP32 microcontroller templates
+
+Each architecture directory contains:
 - `c_template.hbs` - C code template (single page)
 - `micropython_template.hbs` - MicroPython template (single page)
 - `c_multipage_template.hbs` - C code template (multi-page)
@@ -480,10 +494,10 @@ Templates are stored in the `templates/` directory:
 
 #### How to Customize Templates
 
-1. Navigate to the `templates/` folder in your installation directory
+1. Navigate to the `templates/{architecture}/` folder in your installation directory
 2. Open any `.hbs` (Handlebars) template file in a text editor
 3. Modify the template structure while preserving the variable placeholders
-4. Save the file - changes will be used in the next code generation
+4. Save the file - changes will be used in the next code generation for that architecture
 
 #### Template Variables
 
@@ -556,6 +570,136 @@ If you need to reset a template to its original state, simply delete the templat
 - Use triple braces `{{{variable}}}` for raw output (preserves formatting)
 - Use double braces `{{variable}}` for escaped output
 - Handlebars helpers like `{{#if}}`, `{{#each}}`, `{{#unless}}` are supported
+
+## v2.3 Features
+
+### 🏗️ Multi-Architecture Template System
+
+Version 2.3 introduces support for multiple target architectures, allowing you to generate code optimized for different platforms with architecture-specific includes, initialization code, and configuration.
+
+#### Supported Architectures
+
+The editor now supports the following target architectures:
+
+1. **Unix/Linux** (default)
+   - Generic Unix/Linux systems
+   - Standard LVGL includes
+   - Suitable for desktop applications and simulators
+
+2. **STM32**
+   - STM32 microcontrollers with LVGL
+   - Includes STM32 HAL headers (`#include "main.h"`)
+   - Optimized for embedded STM32 targets
+
+3. **ESP32**
+   - ESP32 microcontrollers (ESP-IDF or Arduino)
+   - Optional ESP-IDF or Arduino framework includes
+   - Suitable for IoT and embedded ESP32 applications
+
+#### How to Select Architecture
+
+1. Open the **Code Export** dialog (Export button in toolbar)
+2. Select your desired **Target Architecture** from the dropdown
+3. Choose the programming language (C or MicroPython)
+4. The generated code will use architecture-specific templates
+
+Your architecture selection is **automatically saved** with the project and will be remembered for future code exports.
+
+#### Template Directory Structure
+
+```
+templates/
+├── unix/
+│   ├── c_template.hbs
+│   ├── c_multipage_template.hbs
+│   ├── micropython_template.hbs
+│   └── micropython_multipage_template.hbs
+├── stm32/
+│   ├── c_template.hbs
+│   ├── c_multipage_template.hbs
+│   ├── micropython_template.hbs
+│   └── micropython_multipage_template.hbs
+└── esp32/
+    ├── c_template.hbs
+    ├── c_multipage_template.hbs
+    ├── micropython_template.hbs
+    └── micropython_multipage_template.hbs
+```
+
+#### Adding Custom Architectures
+
+You can easily add support for additional architectures:
+
+1. **Create Architecture Directory**
+   ```bash
+   mkdir templates/my_custom_arch
+   ```
+
+2. **Copy Template Files**
+   ```bash
+   cp templates/unix/*.hbs templates/my_custom_arch/
+   ```
+
+3. **Edit Templates**
+   - Modify the `.hbs` files in `templates/my_custom_arch/`
+   - Add architecture-specific includes, initialization code, etc.
+
+4. **Register Architecture** (in `src/generators/templateLoader.js`):
+   ```javascript
+   export const ARCHITECTURES = {
+     UNIX: 'unix',
+     STM32: 'stm32',
+     ESP32: 'esp32',
+     MY_CUSTOM: 'my_custom_arch',  // Add your architecture
+   };
+   ```
+
+5. **Add to Selector** (in `getAvailableArchitectures()`):
+   ```javascript
+   {
+     id: ARCHITECTURES.MY_CUSTOM,
+     name: 'My Custom Platform',
+     description: 'Custom platform description'
+   }
+   ```
+
+#### Architecture-Specific Template Differences
+
+Each architecture can have different:
+
+- **Include statements**: Platform-specific headers
+- **Initialization code**: Hardware-specific setup
+- **Function naming**: Architecture conventions
+- **Comments and documentation**: Platform-specific notes
+- **Memory management**: Stack/heap considerations
+- **Build configuration**: Compiler flags and settings
+
+#### Example: STM32 Template Customization
+
+The STM32 templates include:
+```c
+#include "lvgl.h"
+#include "main.h"  // STM32 HAL includes
+```
+
+And include notes about initialization:
+```c
+/**
+ * Initialize and show the UI
+ * Call this after LVGL and display are initialized
+ */
+```
+
+#### Example: ESP32 Template Customization
+
+The ESP32 templates include framework-specific comments:
+```c
+// Uncomment based on your framework:
+// #include "esp_log.h"        // For ESP-IDF
+// #include <Arduino.h>        // For Arduino
+```
+
+This allows developers to quickly adapt the generated code to their specific ESP32 development environment.
 
 ## Contributing
 

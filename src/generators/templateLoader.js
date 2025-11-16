@@ -1,7 +1,18 @@
 // Template Loader for Code Generation
-//  Loads external template files that can be customized by users
+// Loads external template files that can be customized by users
+// Supports multi-architecture templates (unix, stm32, esp32, etc.)
 
 import Handlebars from 'handlebars';
+
+// Supported architectures
+export const ARCHITECTURES = {
+  UNIX: 'unix',
+  STM32: 'stm32',
+  ESP32: 'esp32',
+};
+
+// Default architecture
+export const DEFAULT_ARCHITECTURE = ARCHITECTURES.UNIX;
 
 // Default templates (fallback if external files are not available)
 const defaultTemplates = {
@@ -236,24 +247,28 @@ const templateCache = {};
 /**
  * Load a template from file or use default
  * @param {string} templateName - Name of the template (c, micropython, c_multipage, micropython_multipage)
+ * @param {string} architecture - Target architecture (unix, stm32, esp32, etc.)
  * @returns {Promise<Function>} Compiled Handlebars template
  */
-export async function loadTemplate(templateName) {
+export async function loadTemplate(templateName, architecture = DEFAULT_ARCHITECTURE) {
+  // Create unique cache key including architecture
+  const cacheKey = `${architecture}_${templateName}`;
+
   // Check cache first
-  if (templateCache[templateName]) {
-    return templateCache[templateName];
+  if (templateCache[cacheKey]) {
+    return templateCache[cacheKey];
   }
 
   let templateSource = null;
 
-  // Try to load from external file
+  // Try to load from external file with architecture-specific path
   try {
     if (window.electronAPI && window.electronAPI.readFile) {
-      const templatePath = `templates/${templateName}_template.hbs`;
+      const templatePath = `templates/${architecture}/${templateName}_template.hbs`;
       templateSource = await window.electronAPI.readFile(templatePath);
     }
   } catch (error) {
-    console.warn(`Could not load external template ${templateName}:`, error);
+    console.warn(`Could not load external template ${templateName} for ${architecture}:`, error);
   }
 
   // Fallback to default template
@@ -262,14 +277,14 @@ export async function loadTemplate(templateName) {
   }
 
   if (!templateSource) {
-    throw new Error(`Template "${templateName}" not found`);
+    throw new Error(`Template "${templateName}" not found for architecture "${architecture}"`);
   }
 
   // Compile template
   const compiledTemplate = Handlebars.compile(templateSource);
 
   // Cache the compiled template
-  templateCache[templateName] = compiledTemplate;
+  templateCache[cacheKey] = compiledTemplate;
 
   return compiledTemplate;
 }
@@ -277,12 +292,13 @@ export async function loadTemplate(templateName) {
 /**
  * Get template source code for editing
  * @param {string} templateName - Name of the template
+ * @param {string} architecture - Target architecture
  * @returns {Promise<string>} Template source code
  */
-export async function getTemplateSource(templateName) {
+export async function getTemplateSource(templateName, architecture = DEFAULT_ARCHITECTURE) {
   try {
     if (window.electronAPI && window.electronAPI.readFile) {
-      const templatePath = `templates/${templateName}_template.hbs`;
+      const templatePath = `templates/${architecture}/${templateName}_template.hbs`;
       return await window.electronAPI.readFile(templatePath);
     }
   } catch (error) {
@@ -296,22 +312,24 @@ export async function getTemplateSource(templateName) {
 /**
  * Save template source code
  * @param {string} templateName - Name of the template
+ * @param {string} architecture - Target architecture
  * @param {string} source - Template source code
  * @returns {Promise<boolean>} Success status
  */
-export async function saveTemplateSource(templateName, source) {
+export async function saveTemplateSource(templateName, architecture = DEFAULT_ARCHITECTURE, source) {
   try {
     if (window.electronAPI && window.electronAPI.writeFile) {
-      const templatePath = `templates/${templateName}_template.hbs`;
+      const templatePath = `templates/${architecture}/${templateName}_template.hbs`;
       await window.electronAPI.writeFile(templatePath, source);
 
       // Clear cache to force reload
-      delete templateCache[templateName];
+      const cacheKey = `${architecture}_${templateName}`;
+      delete templateCache[cacheKey];
 
       return true;
     }
   } catch (error) {
-    console.error(`Could not save template ${templateName}:`, error);
+    console.error(`Could not save template ${templateName} for ${architecture}:`, error);
     return false;
   }
 
@@ -321,15 +339,16 @@ export async function saveTemplateSource(templateName, source) {
 /**
  * Reset template to default
  * @param {string} templateName - Name of the template
+ * @param {string} architecture - Target architecture
  * @returns {Promise<boolean>} Success status
  */
-export async function resetTemplate(templateName) {
+export async function resetTemplate(templateName, architecture = DEFAULT_ARCHITECTURE) {
   const defaultSource = defaultTemplates[templateName];
   if (!defaultSource) {
     return false;
   }
 
-  return await saveTemplateSource(templateName, defaultSource);
+  return await saveTemplateSource(templateName, architecture, defaultSource);
 }
 
 /**
@@ -345,10 +364,47 @@ export function getAvailableTemplates() {
   ];
 }
 
+/**
+ * Get list of available architectures
+ * @returns {Array<{id: string, name: string, description: string}>} List of architectures
+ */
+export function getAvailableArchitectures() {
+  return [
+    {
+      id: ARCHITECTURES.UNIX,
+      name: 'Unix/Linux',
+      description: 'Generic Unix/Linux systems'
+    },
+    {
+      id: ARCHITECTURES.STM32,
+      name: 'STM32',
+      description: 'STM32 microcontrollers with LVGL'
+    },
+    {
+      id: ARCHITECTURES.ESP32,
+      name: 'ESP32',
+      description: 'ESP32 microcontrollers (ESP-IDF or Arduino)'
+    },
+  ];
+}
+
+/**
+ * Check if an architecture is supported
+ * @param {string} architecture - Architecture ID to check
+ * @returns {boolean} True if architecture is supported
+ */
+export function isArchitectureSupported(architecture) {
+  return Object.values(ARCHITECTURES).includes(architecture);
+}
+
 export default {
   loadTemplate,
   getTemplateSource,
   saveTemplateSource,
   resetTemplate,
   getAvailableTemplates,
+  getAvailableArchitectures,
+  isArchitectureSupported,
+  ARCHITECTURES,
+  DEFAULT_ARCHITECTURE,
 };

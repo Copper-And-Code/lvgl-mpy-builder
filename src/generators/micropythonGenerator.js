@@ -1,5 +1,5 @@
 // MicroPython Code Generator for LVGL
-import { loadTemplate } from './templateLoader';
+import { loadTemplate, DEFAULT_ARCHITECTURE } from './templateLoader';
 
 function hexToRgb(hex) {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -268,7 +268,7 @@ function generateWidgetCode(widget, widgets, indent = '    ') {
   return lines.join('\n');
 }
 
-export async function generateMicroPythonCode(projectData) {
+export async function generateMicroPythonCode(projectData, architecture = DEFAULT_ARCHITECTURE) {
   const { projectName, widgets, canvasSize, pages, version } = projectData;
   const functionName = sanitizeIdentifier(projectName || 'ui') + '_create';
 
@@ -276,14 +276,14 @@ export async function generateMicroPythonCode(projectData) {
   const isMultiPage = pages && pages.length > 0;
 
   if (isMultiPage) {
-    return await generateMultiPageMicroPythonCode(projectData);
+    return await generateMultiPageMicroPythonCode(projectData, architecture);
   }
 
   // Legacy single-page generation
-  return await generateSinglePageMicroPythonCode(projectData);
+  return await generateSinglePageMicroPythonCode(projectData, architecture);
 }
 
-async function generateSinglePageMicroPythonCode(projectData) {
+async function generateSinglePageMicroPythonCode(projectData, architecture = DEFAULT_ARCHITECTURE) {
   const { projectName, widgets, canvasSize } = projectData;
   const functionName = sanitizeIdentifier(projectName || 'ui') + '_create';
 
@@ -331,13 +331,13 @@ async function generateSinglePageMicroPythonCode(projectData) {
   };
 
   // Load and compile template
-  const template = await loadTemplate('micropython');
+  const template = await loadTemplate('micropython', architecture);
 
   // Generate code from template
   return template(templateData);
 }
 
-async function generateMultiPageMicroPythonCode(projectData) {
+async function generateMultiPageMicroPythonCode(projectData, architecture = DEFAULT_ARCHITECTURE) {
   const { projectName, pages, assets } = projectData;
   const baseName = sanitizeIdentifier(projectName || 'ui');
 
@@ -402,7 +402,7 @@ async function generateMultiPageMicroPythonCode(projectData) {
   };
 
   // Load and compile template
-  const template = await loadTemplate('micropython_multipage');
+  const template = await loadTemplate('micropython_multipage', architecture);
 
   // Generate code from template
   return template(templateData);

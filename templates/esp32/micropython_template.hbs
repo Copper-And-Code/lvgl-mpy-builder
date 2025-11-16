@@ -1,0 +1,60 @@
+"""
+Auto-generated LVGL UI Code for MicroPython on ESP32
+Project: {{projectName}}
+Generated: {{generatedDate}}
+Display Size: {{canvasWidth}}x{{canvasHeight}}
+Target: ESP32 with MicroPython
+
+This is a customizable template file for ESP32 MicroPython targets.
+You can modify this file to change the structure of the generated code.
+
+Available variables:
+- projectName: Name of the project
+- generatedDate: ISO date string
+- canvasWidth, canvasHeight: Canvas dimensions
+- functionName: Sanitized function name
+- hasEventCallbacks: Boolean, true if there are event callbacks
+- eventCallbacks: Array of {name, type, code, eventType}
+- widgets: Array of widget code strings
+"""
+
+import lvgl as lv
+
+{{#if hasEventCallbacks}}
+# Event callback implementations
+{{#each eventCallbacks}}
+def {{this.name}}(e):
+    """Event handler for {{this.type}}"""
+    code = e.get_code()
+    obj = e.get_target()
+
+    if code == lv.EVENT.{{this.eventType}}:
+        {{this.code}}
+
+{{/each}}
+{{/if}}
+def {{functionName}}(parent=None):
+    """
+    Create the UI for {{projectName}}
+
+    Args:
+        parent: Parent object (use lv.scr_act() for screen)
+    """
+    if parent is None:
+        parent = lv.scr_act()
+
+{{#each widgets}}
+{{{this}}}
+{{/each}}
+
+def {{functionName}}_init():
+    """
+    Initialize and show the UI
+    Call this after LVGL and display are initialized
+    """
+    screen = lv.obj()
+    {{functionName}}(screen)
+    lv.scr_load(screen)
+
+# Example usage:
+# {{functionName}}_init()
