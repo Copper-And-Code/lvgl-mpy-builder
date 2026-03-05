@@ -1,7 +1,7 @@
 {
   "name": "lvgl-editor",
-  "version": "2.3.0",
-  "description": "Visual editor for LVGL with C and MicroPython code generation",
+  "version": "3.0.0",
+  "description": "Visual editor for LVGL 9.3 with C and MicroPython code generation - 31 widget types",
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron-forge start",

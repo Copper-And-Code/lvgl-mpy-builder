@@ -6,7 +6,6 @@ const WidgetPalette = () => {
   const { addWidget } = useStore();
 
   const handleAddWidget = (type) => {
-    // Add widget at a default position
     addWidget(type, { x: 100, y: 100 });
   };
 
@@ -17,17 +16,40 @@ const WidgetPalette = () => {
     },
     {
       name: 'Input',
-      widgets: [WIDGET_TYPES.SLIDER, WIDGET_TYPES.SWITCH, WIDGET_TYPES.CHECKBOX, WIDGET_TYPES.TEXTAREA],
+      widgets: [
+        WIDGET_TYPES.SLIDER, WIDGET_TYPES.SWITCH, WIDGET_TYPES.CHECKBOX,
+        WIDGET_TYPES.TEXTAREA, WIDGET_TYPES.DROPDOWN, WIDGET_TYPES.ROLLER,
+        WIDGET_TYPES.SPINBOX, WIDGET_TYPES.KEYBOARD,
+      ],
     },
     {
       name: 'Display',
-      widgets: [WIDGET_TYPES.BAR, WIDGET_TYPES.ARC, WIDGET_TYPES.SPINNER],
+      widgets: [WIDGET_TYPES.BAR, WIDGET_TYPES.ARC, WIDGET_TYPES.SPINNER, WIDGET_TYPES.LED],
+    },
+    {
+      name: 'Data',
+      widgets: [WIDGET_TYPES.CHART, WIDGET_TYPES.TABLE, WIDGET_TYPES.SCALE],
+    },
+    {
+      name: 'Media',
+      widgets: [WIDGET_TYPES.IMAGE, WIDGET_TYPES.IMAGE_BUTTON],
+    },
+    {
+      name: 'Navigation',
+      widgets: [WIDGET_TYPES.TABVIEW, WIDGET_TYPES.TILEVIEW, WIDGET_TYPES.MENU, WIDGET_TYPES.WIN],
+    },
+    {
+      name: 'Container',
+      widgets: [
+        WIDGET_TYPES.LIST, WIDGET_TYPES.MSGBOX, WIDGET_TYPES.BUTTONMATRIX,
+        WIDGET_TYPES.CALENDAR, WIDGET_TYPES.LINE, WIDGET_TYPES.SPAN,
+      ],
     },
   ];
 
   return (
     <div className="widget-palette">
-      <h3>Widgets</h3>
+      <h3>Widgets <span style={{ fontSize: '10px', color: '#888' }}>LVGL 9.3</span></h3>
 
       {widgetCategories.map((category) => (
         <div key={category.name} className="widget-category">
@@ -35,12 +57,13 @@ const WidgetPalette = () => {
           <div className="widget-grid">
             {category.widgets.map((type) => {
               const def = widgetDefinitions[type];
+              if (!def) return null;
               return (
                 <button
                   key={type}
                   className="widget-button"
                   onClick={() => handleAddWidget(type)}
-                  title={`Add ${def.name}`}
+                  title={`Add ${def.name} (${def.lvglType})`}
                 >
                   <span className="widget-icon">{def.icon}</span>
                   <span className="widget-name">{def.name}</span>
@@ -53,6 +76,7 @@ const WidgetPalette = () => {
 
       <div className="palette-footer">
         <p className="help-text">Click to add widgets to the canvas</p>
+        <p className="help-text" style={{ fontSize: '10px', color: '#aaa' }}>31 widget types available</p>
       </div>
     </div>
   );

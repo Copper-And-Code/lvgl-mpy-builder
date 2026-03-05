@@ -1,6 +1,7 @@
 // Template Loader for Code Generation
 // Loads external template files that can be customized by users
-// Supports multi-architecture templates (unix, stm32, esp32, etc.)
+// Supports multi-architecture templates (unix, stm32, esp32, rp2040, nrf52, etc.)
+// Updated for LVGL 9.3
 
 import Handlebars from 'handlebars';
 
@@ -9,18 +10,23 @@ export const ARCHITECTURES = {
   UNIX: 'unix',
   STM32: 'stm32',
   ESP32: 'esp32',
+  RP2040: 'rp2040',
+  NRF52: 'nrf52',
 };
 
 // Default architecture
 export const DEFAULT_ARCHITECTURE = ARCHITECTURES.UNIX;
 
 // Default templates (fallback if external files are not available)
+// Updated for LVGL 9.3 API
 const defaultTemplates = {
   c: `/*
- * Auto-generated LVGL UI Code
+ * Auto-generated LVGL 9.3 UI Code
  * Project: {{projectName}}
  * Generated: {{generatedDate}}
  * Display Size: {{canvasWidth}}x{{canvasHeight}}
+ *
+ * LVGL Version: 9.3
  */
 
 #include "lvgl.h"
@@ -35,7 +41,7 @@ static void {{this.name}}(lv_event_t *e);
 void {{functionName}}(lv_obj_t *parent)
 {
     if (parent == NULL) {
-        parent = lv.scr_act();
+        parent = lv_screen_active();
     }
 
 {{#each widgets}}
@@ -48,7 +54,7 @@ void {{functionName}}(lv_obj_t *parent)
 static void {{this.name}}(lv_event_t *e)
 {
     lv_event_code_t code = lv_event_get_code(e);
-    lv_obj_t *obj = lv_event_get_target(e);
+    lv_obj_t *obj = lv_event_get_target_obj(e);
 
     if (code == {{this.type}}) {
         {{this.code}}
@@ -61,15 +67,17 @@ void {{functionName}}_init(void)
 {
     lv_obj_t *screen = lv_obj_create(NULL);
     {{functionName}}(screen);
-    lv_scr_load(screen);
+    lv_screen_load(screen);
 }
 `,
 
   micropython: `"""
-Auto-generated LVGL UI Code for MicroPython
+Auto-generated LVGL 9.3 UI Code for MicroPython
 Project: {{projectName}}
 Generated: {{generatedDate}}
 Display Size: {{canvasWidth}}x{{canvasHeight}}
+
+LVGL Version: 9.3
 """
 
 import lvgl as lv
@@ -78,7 +86,7 @@ import lvgl as lv
 {{#each eventCallbacks}}
 def {{this.name}}(e):
     code = e.get_code()
-    obj = e.get_target()
+    obj = e.get_target_obj()
 
     if code == lv.EVENT.{{this.eventType}}:
         {{this.code}}
@@ -87,7 +95,7 @@ def {{this.name}}(e):
 {{/if}}
 def {{functionName}}(parent=None):
     if parent is None:
-        parent = lv.scr_act()
+        parent = lv.screen_active()
 
 {{#each widgets}}
 {{{this}}}
@@ -96,14 +104,16 @@ def {{functionName}}(parent=None):
 def {{functionName}}_init():
     screen = lv.obj()
     {{functionName}}(screen)
-    lv.scr_load(screen)
+    lv.screen_load(screen)
 `,
 
   c_multipage: `/*
- * Auto-generated LVGL UI Code (Multi-Page)
+ * Auto-generated LVGL 9.3 UI Code (Multi-Page)
  * Project: {{projectName}}
  * Generated: {{generatedDate}}
  * Pages: {{pageCount}}
+ *
+ * LVGL Version: 9.3
  */
 
 #include "lvgl.h"
@@ -121,7 +131,7 @@ static int current_screen = 0;
 void {{this.functionName}}(lv_obj_t *parent)
 {
     if (parent == NULL) {
-        parent = lv_scr_act();
+        parent = lv_screen_active();
     }
 
 {{#each this.widgets}}
@@ -135,7 +145,7 @@ void {{this.functionName}}(lv_obj_t *parent)
 static void {{this.name}}(lv_event_t *e)
 {
     lv_event_code_t code = lv_event_get_code(e);
-    lv_obj_t *obj = lv_event_get_target(e);
+    lv_obj_t *obj = lv_event_get_target_obj(e);
 
     if (code == {{this.type}}) {
         {{this.code}}
@@ -162,7 +172,29 @@ void {{baseName}}_load_page(int page_index)
         }
     }
 
-    lv_scr_load(screens[page_index]);
+    lv_screen_load(screens[page_index]);
+    current_screen = page_index;
+}
+
+void {{baseName}}_load_page_anim(int page_index, lv_screen_load_anim_t anim, uint32_t time, uint32_t delay)
+{
+    if (page_index < 0 || page_index >= {{pageCount}}) {
+        return;
+    }
+
+    if (screens[page_index] == NULL) {
+        screens[page_index] = lv_obj_create(NULL);
+
+        switch(page_index) {
+{{#each pages}}
+            case {{@index}}:
+                {{this.functionName}}(screens[{{@index}}]);
+                break;
+{{/each}}
+        }
+    }
+
+    lv_screen_load_anim(screens[page_index], anim, time, delay, false);
     current_screen = page_index;
 }
 
@@ -181,10 +213,12 @@ void {{baseName}}_init(void)
 `,
 
   micropython_multipage: `"""
-Auto-generated LVGL UI Code for MicroPython (Multi-Page)
+Auto-generated LVGL 9.3 UI Code for MicroPython (Multi-Page)
 Project: {{projectName}}
 Generated: {{generatedDate}}
 Pages: {{pageCount}}
+
+LVGL Version: 9.3
 """
 
 import lvgl as lv
@@ -193,7 +227,7 @@ import lvgl as lv
 {{#each eventCallbacks}}
 def {{this.name}}(e):
     code = e.get_code()
-    obj = e.get_target()
+    obj = e.get_target_obj()
 
     if code == lv.EVENT.{{this.eventType}}:
         {{this.code}}
@@ -206,7 +240,7 @@ current_screen = 0
 {{#each pages}}
 def {{this.functionName}}(parent=None):
     if parent is None:
-        parent = lv.scr_act()
+        parent = lv.screen_active()
 
 {{#each this.widgets}}
 {{{this}}}
@@ -227,7 +261,24 @@ def {{baseName}}_load_page(page_index):
             {{this.functionName}}(screens[{{@index}}])
 {{/each}}
 
-    lv.scr_load(screens[page_index])
+    lv.screen_load(screens[page_index])
+    current_screen = page_index
+
+def {{baseName}}_load_page_anim(page_index, anim, time_ms, delay_ms):
+    global screens, current_screen
+
+    if page_index < 0 or page_index >= {{pageCount}}:
+        return
+
+    if screens[page_index] is None:
+        screens[page_index] = lv.obj()
+
+{{#each pages}}
+        {{#if @first}}if{{else}}elif{{/if}} page_index == {{@index}}:
+            {{this.functionName}}(screens[{{@index}}])
+{{/each}}
+
+    lv.screen_load_anim(screens[page_index], anim, time_ms, delay_ms, False)
     current_screen = page_index
 
 def {{baseName}}_get_current_page():
@@ -247,14 +298,12 @@ const templateCache = {};
 /**
  * Load a template from file or use default
  * @param {string} templateName - Name of the template (c, micropython, c_multipage, micropython_multipage)
- * @param {string} architecture - Target architecture (unix, stm32, esp32, etc.)
+ * @param {string} architecture - Target architecture (unix, stm32, esp32, rp2040, nrf52, etc.)
  * @returns {Promise<Function>} Compiled Handlebars template
  */
 export async function loadTemplate(templateName, architecture = DEFAULT_ARCHITECTURE) {
-  // Create unique cache key including architecture
   const cacheKey = `${architecture}_${templateName}`;
 
-  // Check cache first
   if (templateCache[cacheKey]) {
     return templateCache[cacheKey];
   }
@@ -290,10 +339,14 @@ export async function loadTemplate(templateName, architecture = DEFAULT_ARCHITEC
 }
 
 /**
+ * Clear template cache (useful when templates are updated)
+ */
+export function clearTemplateCache() {
+  Object.keys(templateCache).forEach(key => delete templateCache[key]);
+}
+
+/**
  * Get template source code for editing
- * @param {string} templateName - Name of the template
- * @param {string} architecture - Target architecture
- * @returns {Promise<string>} Template source code
  */
 export async function getTemplateSource(templateName, architecture = DEFAULT_ARCHITECTURE) {
   try {
@@ -305,16 +358,11 @@ export async function getTemplateSource(templateName, architecture = DEFAULT_ARC
     // File doesn't exist or can't be read
   }
 
-  // Return default template
   return defaultTemplates[templateName] || '';
 }
 
 /**
  * Save template source code
- * @param {string} templateName - Name of the template
- * @param {string} architecture - Target architecture
- * @param {string} source - Template source code
- * @returns {Promise<boolean>} Success status
  */
 export async function saveTemplateSource(templateName, architecture = DEFAULT_ARCHITECTURE, source) {
   try {
@@ -338,9 +386,6 @@ export async function saveTemplateSource(templateName, architecture = DEFAULT_AR
 
 /**
  * Reset template to default
- * @param {string} templateName - Name of the template
- * @param {string} architecture - Target architecture
- * @returns {Promise<boolean>} Success status
  */
 export async function resetTemplate(templateName, architecture = DEFAULT_ARCHITECTURE) {
   const defaultSource = defaultTemplates[templateName];
@@ -353,7 +398,6 @@ export async function resetTemplate(templateName, architecture = DEFAULT_ARCHITE
 
 /**
  * Get list of available templates
- * @returns {Array<{name: string, label: string}>} List of templates
  */
 export function getAvailableTemplates() {
   return [
@@ -366,32 +410,39 @@ export function getAvailableTemplates() {
 
 /**
  * Get list of available architectures
- * @returns {Array<{id: string, name: string, description: string}>} List of architectures
  */
 export function getAvailableArchitectures() {
   return [
     {
       id: ARCHITECTURES.UNIX,
       name: 'Unix/Linux',
-      description: 'Generic Unix/Linux systems'
+      description: 'Generic Unix/Linux systems, desktop simulators'
     },
     {
       id: ARCHITECTURES.STM32,
       name: 'STM32',
-      description: 'STM32 microcontrollers with LVGL'
+      description: 'STM32 microcontrollers with HAL + LVGL'
     },
     {
       id: ARCHITECTURES.ESP32,
       name: 'ESP32',
       description: 'ESP32 microcontrollers (ESP-IDF or Arduino)'
     },
+    {
+      id: ARCHITECTURES.RP2040,
+      name: 'RP2040 / Pico',
+      description: 'Raspberry Pi Pico / RP2040 boards'
+    },
+    {
+      id: ARCHITECTURES.NRF52,
+      name: 'nRF52',
+      description: 'Nordic nRF52 series (nRF52832, nRF52840)'
+    },
   ];
 }
 
 /**
  * Check if an architecture is supported
- * @param {string} architecture - Architecture ID to check
- * @returns {boolean} True if architecture is supported
  */
 export function isArchitectureSupported(architecture) {
   return Object.values(ARCHITECTURES).includes(architecture);
@@ -399,6 +450,7 @@ export function isArchitectureSupported(architecture) {
 
 export default {
   loadTemplate,
+  clearTemplateCache,
   getTemplateSource,
   saveTemplateSource,
   resetTemplate,
