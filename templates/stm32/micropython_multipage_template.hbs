@@ -1,13 +1,13 @@
 """
-Auto-generated LVGL UI Code for MicroPython on STM32 (Multi-Page)
+Auto-generated LVGL 9.3 UI Code for MicroPython on STM32 (Multi-Page)
 Project: {{projectName}}
 Generated: {{generatedDate}}
 Pages: {{pageCount}}
 Target: STM32 with MicroPython
-Version: 1.2.0
+
+LVGL Version: 9.3
 
 This is a customizable template file for multi-page STM32 MicroPython projects.
-You can modify this file to change the structure of the generated code.
 """
 
 import lvgl as lv
@@ -18,7 +18,7 @@ import lvgl as lv
 def {{this.name}}(e):
     """Event handler for {{this.type}}"""
     code = e.get_code()
-    obj = e.get_target()
+    obj = e.get_target_obj()
 
     if code == lv.EVENT.{{this.eventType}}:
         {{this.code}}
@@ -37,7 +37,7 @@ def {{this.functionName}}(parent=None):
     Widgets: {{this.widgetCount}}
     """
     if parent is None:
-        parent = lv.scr_act()
+        parent = lv.screen_active()
 
 {{#each this.widgets}}
 {{{this}}}
@@ -65,7 +65,25 @@ def {{baseName}}_load_page(page_index):
             {{this.functionName}}(screens[{{@index}}])
 {{/each}}
 
-    lv.scr_load(screens[page_index])
+    lv.screen_load(screens[page_index])
+    current_screen = page_index
+
+def {{baseName}}_load_page_anim(page_index, anim, time_ms, delay_ms):
+    """Load page with animation"""
+    global screens, current_screen
+
+    if page_index < 0 or page_index >= {{pageCount}}:
+        return
+
+    if screens[page_index] is None:
+        screens[page_index] = lv.obj()
+
+{{#each pages}}
+        {{#if @first}}if{{else}}elif{{/if}} page_index == {{@index}}:
+            {{this.functionName}}(screens[{{@index}}])
+{{/each}}
+
+    lv.screen_load_anim(screens[page_index], anim, time_ms, delay_ms, False)
     current_screen = page_index
 
 def {{baseName}}_get_current_page():

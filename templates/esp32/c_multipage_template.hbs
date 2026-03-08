@@ -1,13 +1,13 @@
 /*
- * Auto-generated LVGL UI Code for ESP32 (Multi-Page)
+ * Auto-generated LVGL 9.3 UI Code for ESP32 (Multi-Page)
  * Project: {{projectName}}
  * Generated: {{generatedDate}}
  * Pages: {{pageCount}}
  * Target: ESP32 with LVGL (ESP-IDF or Arduino)
- * Version: 1.2.0
+ *
+ * LVGL Version: 9.3
  *
  * This is a customizable template file for multi-page ESP32 projects.
- * You can modify this file to change the structure of the generated code.
  */
 
 #include "lvgl.h"
@@ -35,7 +35,7 @@ static int current_screen = 0;
 void {{this.functionName}}(lv_obj_t *parent)
 {
     if (parent == NULL) {
-        parent = lv_scr_act();
+        parent = lv_screen_active();
     }
 
 {{#each this.widgets}}
@@ -50,7 +50,7 @@ void {{this.functionName}}(lv_obj_t *parent)
 static void {{this.name}}(lv_event_t *e)
 {
     lv_event_code_t code = lv_event_get_code(e);
-    lv_obj_t *obj = lv_event_get_target(e);
+    lv_obj_t *obj = lv_event_get_target_obj(e);
 
     if (code == {{this.type}}) {
         {{this.code}}
@@ -81,7 +81,32 @@ void {{baseName}}_load_page(int page_index)
         }
     }
 
-    lv_scr_load(screens[page_index]);
+    lv_screen_load(screens[page_index]);
+    current_screen = page_index;
+}
+
+/**
+ * Load page with animation
+ */
+void {{baseName}}_load_page_anim(int page_index, lv_screen_load_anim_t anim, uint32_t time, uint32_t delay)
+{
+    if (page_index < 0 || page_index >= {{pageCount}}) {
+        return;
+    }
+
+    if (screens[page_index] == NULL) {
+        screens[page_index] = lv_obj_create(NULL);
+
+        switch(page_index) {
+{{#each pages}}
+            case {{@index}}:
+                {{this.functionName}}(screens[{{@index}}]);
+                break;
+{{/each}}
+        }
+    }
+
+    lv_screen_load_anim(screens[page_index], anim, time, delay, false);
     current_screen = page_index;
 }
 
@@ -99,11 +124,9 @@ int {{baseName}}_get_current_page(void)
  */
 void {{baseName}}_init(void)
 {
-    // Initialize screen array
     for (int i = 0; i < {{pageCount}}; i++) {
         screens[i] = NULL;
     }
 
-    // Load first page
     {{baseName}}_load_page(0);
 }

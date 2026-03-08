@@ -183,7 +183,7 @@ function generateWidgetCode(widget, widgets, indent = '    ') {
       if (props.textColor) lines.push(`${indent}${varName}.set_style_text_color(${colorToLvglColor(props.textColor)}, 0)`);
       if (props.longMode && props.longMode !== 'LV_LABEL_LONG_WRAP') {
         const mpLongMode = props.longMode.replace('LV_LABEL_LONG_', '');
-        lines.push(`${indent}${varName}.set_long_mode(lv.label.LONG.${mpLongMode})`);
+        lines.push(`${indent}${varName}.set_long_mode(lv.LABEL_LONG.${mpLongMode})`);
       }
       if (props.textAlign) {
         const mpAlign = props.textAlign.replace('LV_TEXT_ALIGN_', '');
@@ -199,13 +199,13 @@ function generateWidgetCode(widget, widgets, indent = '    ') {
       lines.push(`${indent}${varName}.set_pos(${props.x}, ${props.y})`);
       lines.push(`${indent}${varName}.set_size(${props.width}, ${props.height})`);
       lines.push(`${indent}${varName}.set_range(${props.min || 0}, ${props.max || 100})`);
-      lines.push(`${indent}${varName}.set_value(${props.value || 50}, lv.ANIM.OFF)`);
+      lines.push(`${indent}${varName}.set_value(${props.value || 50}, lv.ANIM_OFF)`);
       if (props.indicatorColor) lines.push(`${indent}${varName}.set_style_bg_color(${colorToLvglColor(props.indicatorColor)}, lv.PART.INDICATOR)`);
       if (props.knobColor) lines.push(`${indent}${varName}.set_style_bg_color(${colorToLvglColor(props.knobColor)}, lv.PART.KNOB)`);
-      if (props.mode === 'symmetrical') lines.push(`${indent}${varName}.set_mode(lv.slider.MODE.SYMMETRICAL)`);
+      if (props.mode === 'symmetrical') lines.push(`${indent}${varName}.set_mode(lv.SLIDER_MODE.SYMMETRICAL)`);
       if (props.mode === 'range' || props.isRange) {
-        lines.push(`${indent}${varName}.set_mode(lv.slider.MODE.RANGE)`);
-        if (props.leftValue !== undefined) lines.push(`${indent}${varName}.set_left_value(${props.leftValue}, lv.ANIM.OFF)`);
+        lines.push(`${indent}${varName}.set_mode(lv.SLIDER_MODE.RANGE)`);
+        if (props.leftValue !== undefined) lines.push(`${indent}${varName}.set_left_value(${props.leftValue}, lv.ANIM_OFF)`);
       }
       break;
     }
@@ -273,9 +273,9 @@ function generateWidgetCode(widget, widgets, indent = '    ') {
       lines.push(`${indent}${varName} = lv.roller(${parentVar})`);
       lines.push(`${indent}${varName}.set_pos(${props.x}, ${props.y})`);
       lines.push(`${indent}${varName}.set_size(${props.width}, ${props.height})`);
-      const mpRollerMode = props.infinite ? 'lv.roller.MODE.INFINITE' : 'lv.roller.MODE.NORMAL';
+      const mpRollerMode = props.infinite ? 'lv.ROLLER_MODE.INFINITE' : 'lv.ROLLER_MODE.NORMAL';
       if (props.options) lines.push(`${indent}${varName}.set_options("${props.options.replace(/\n/g, '\\n')}", ${mpRollerMode})`);
-      if (props.selected) lines.push(`${indent}${varName}.set_selected(${props.selected}, lv.ANIM.OFF)`);
+      if (props.selected) lines.push(`${indent}${varName}.set_selected(${props.selected}, lv.ANIM_OFF)`);
       if (props.visibleRows) lines.push(`${indent}${varName}.set_visible_row_count(${props.visibleRows})`);
       if (props.selectedColor) lines.push(`${indent}${varName}.set_style_bg_color(${colorToLvglColor(props.selectedColor)}, lv.PART.SELECTED)`);
       if (props.textColor) lines.push(`${indent}${varName}.set_style_text_color(${colorToLvglColor(props.textColor)}, 0)`);
@@ -302,7 +302,7 @@ function generateWidgetCode(widget, widgets, indent = '    ') {
       lines.push(`${indent}${varName}.set_pos(${props.x}, ${props.y})`);
       lines.push(`${indent}${varName}.set_size(${props.width}, ${props.height})`);
       const kbModeMap = { 'text_lower': 'TEXT_LOWER', 'text_upper': 'TEXT_UPPER', 'text_special': 'SPECIAL', 'number': 'NUMBER' };
-      if (props.mode && kbModeMap[props.mode]) lines.push(`${indent}${varName}.set_mode(lv.keyboard.MODE.${kbModeMap[props.mode]})`);
+      if (props.mode && kbModeMap[props.mode]) lines.push(`${indent}${varName}.set_mode(lv.KEYBOARD_MODE.${kbModeMap[props.mode]})`);
       if (props.popover === false) lines.push(`${indent}${varName}.set_popovers(False)`);
       break;
     }
@@ -327,15 +327,15 @@ function generateWidgetCode(widget, widgets, indent = '    ') {
       lines.push(`${indent}${varName}.set_pos(${props.x}, ${props.y})`);
       lines.push(`${indent}${varName}.set_size(${props.width}, ${props.height})`);
       lines.push(`${indent}${varName}.set_range(${props.min || 0}, ${props.max || 100})`);
-      const animFlag = props.animated !== false ? 'lv.ANIM.ON' : 'lv.ANIM.OFF';
+      const animFlag = props.animated !== false ? 'lv.ANIM_ON' : 'lv.ANIM_OFF';
       lines.push(`${indent}${varName}.set_value(${props.value || 50}, ${animFlag})`);
       if (props.mode && props.mode !== 'LV_BAR_MODE_NORMAL') {
         const mpMode = props.mode.replace('LV_BAR_MODE_', '');
-        lines.push(`${indent}${varName}.set_mode(lv.bar.MODE.${mpMode})`);
+        lines.push(`${indent}${varName}.set_mode(lv.BAR_MODE.${mpMode})`);
       }
       if (props.indicatorColor) lines.push(`${indent}${varName}.set_style_bg_color(${colorToLvglColor(props.indicatorColor)}, lv.PART.INDICATOR)`);
       if (props.startValue && props.mode === 'LV_BAR_MODE_RANGE') {
-        lines.push(`${indent}${varName}.set_start_value(${props.startValue}, lv.ANIM.OFF)`);
+        lines.push(`${indent}${varName}.set_start_value(${props.startValue}, lv.ANIM_OFF)`);
       }
       break;
     }
@@ -353,7 +353,7 @@ function generateWidgetCode(widget, widgets, indent = '    ') {
       if (props.rotation) lines.push(`${indent}${varName}.set_rotation(${props.rotation})`);
       if (props.mode && props.mode !== 'LV_ARC_MODE_NORMAL') {
         const mpMode = props.mode.replace('LV_ARC_MODE_', '');
-        lines.push(`${indent}${varName}.set_mode(lv.arc.MODE.${mpMode})`);
+        lines.push(`${indent}${varName}.set_mode(lv.ARC_MODE.${mpMode})`);
       }
       if (props.lineWidth) {
         lines.push(`${indent}${varName}.set_style_arc_width(${props.lineWidth}, lv.PART.MAIN)`);
@@ -395,13 +395,13 @@ function generateWidgetCode(widget, widgets, indent = '    ') {
       lines.push(`${indent}${varName}.set_pos(${props.x}, ${props.y})`);
       lines.push(`${indent}${varName}.set_size(${props.width}, ${props.height})`);
       const chartTypeMap = { line: 'LINE', bar: 'BAR', scatter: 'SCATTER' };
-      lines.push(`${indent}${varName}.set_type(lv.chart.TYPE.${chartTypeMap[props.chartType] || 'LINE'})`);
+      lines.push(`${indent}${varName}.set_type(lv.CHART_TYPE.${chartTypeMap[props.chartType] || 'LINE'})`);
       if (props.pointCount) lines.push(`${indent}${varName}.set_point_count(${props.pointCount})`);
       if (props.divLineCount) lines.push(`${indent}${varName}.set_div_line_count(${props.divLineCount}, ${props.divLineCountSec || 5})`);
-      lines.push(`${indent}${varName}.set_range(lv.chart.AXIS.PRIMARY_Y, ${props.rangeYMin || 0}, ${props.rangeYMax || 100})`);
-      if (props.updateMode === 'circular') lines.push(`${indent}${varName}.set_update_mode(lv.chart.UPDATE_MODE.CIRCULAR)`);
+      lines.push(`${indent}${varName}.set_range(lv.CHART_AXIS.PRIMARY_Y, ${props.rangeYMin || 0}, ${props.rangeYMax || 100})`);
+      if (props.updateMode === 'circular') lines.push(`${indent}${varName}.set_update_mode(lv.CHART_UPDATE_MODE.CIRCULAR)`);
       const serVar = `${varName}_ser1`;
-      lines.push(`${indent}${serVar} = ${varName}.add_series(${colorToLvglColor(props.lineColor || '#2196F3')}, lv.chart.AXIS.PRIMARY_Y)`);
+      lines.push(`${indent}${serVar} = ${varName}.add_series(${colorToLvglColor(props.lineColor || '#2196F3')}, lv.CHART_AXIS.PRIMARY_Y)`);
       if (props.data) {
         props.data.split(',').forEach((val) => {
           lines.push(`${indent}${varName}.set_next_value(${serVar}, ${val.trim()})`);
@@ -409,7 +409,7 @@ function generateWidgetCode(widget, widgets, indent = '    ') {
       }
       if (props.data2) {
         const ser2Var = `${varName}_ser2`;
-        lines.push(`${indent}${ser2Var} = ${varName}.add_series(${colorToLvglColor(props.lineColor2 || '#FF5722')}, lv.chart.AXIS.PRIMARY_Y)`);
+        lines.push(`${indent}${ser2Var} = ${varName}.add_series(${colorToLvglColor(props.lineColor2 || '#FF5722')}, lv.CHART_AXIS.PRIMARY_Y)`);
         props.data2.split(',').forEach((val) => {
           lines.push(`${indent}${varName}.set_next_value(${ser2Var}, ${val.trim()})`);
         });
@@ -451,7 +451,7 @@ function generateWidgetCode(widget, widgets, indent = '    ') {
       lines.push(`${indent}${varName}.set_pos(${props.x}, ${props.y})`);
       lines.push(`${indent}${varName}.set_size(${props.width}, ${props.height})`);
       const scaleModeMap = { horizontal: 'HORIZONTAL_BOTTOM', vertical: 'VERTICAL_LEFT', round_inner: 'ROUND_INNER', round_outer: 'ROUND_OUTER' };
-      lines.push(`${indent}${varName}.set_mode(lv.scale.MODE.${scaleModeMap[props.mode] || 'HORIZONTAL_BOTTOM'})`);
+      lines.push(`${indent}${varName}.set_mode(lv.SCALE_MODE.${scaleModeMap[props.mode] || 'HORIZONTAL_BOTTOM'})`);
       lines.push(`${indent}${varName}.set_range(${props.min || 0}, ${props.max || 100})`);
       const totalTicks = ((props.max - props.min) / props.majorTickEvery) * (props.minorTickCount + 1) + 1;
       lines.push(`${indent}${varName}.set_total_tick_count(${Math.round(totalTicks)})`);
@@ -480,7 +480,7 @@ function generateWidgetCode(widget, widgets, indent = '    ') {
       lines.push(`${indent}${varName} = lv.imagebutton(${parentVar})`);
       lines.push(`${indent}${varName}.set_pos(${props.x}, ${props.y})`);
       lines.push(`${indent}${varName}.set_size(${props.width}, ${props.height})`);
-      if (props.src) lines.push(`${indent}${varName}.set_src(lv.imagebutton.STATE.RELEASED, None, "${props.src}", None)`);
+      if (props.src) lines.push(`${indent}${varName}.set_src(lv.IMAGEBUTTON_STATE.RELEASED, None, "${props.src}", None)`);
       if (props.bgColor) lines.push(`${indent}${varName}.set_style_bg_color(${colorToLvglColor(props.bgColor)}, 0)`);
       if (props.radius !== undefined) lines.push(`${indent}${varName}.set_style_radius(${props.radius}, 0)`);
       if (props.text) {
@@ -506,7 +506,7 @@ function generateWidgetCode(widget, widgets, indent = '    ') {
           lines.push(`${indent}${varName}.add_tab("${tab.trim()}")`);
         });
       }
-      if (props.activeTab) lines.push(`${indent}${varName}.set_active(${props.activeTab}, lv.ANIM.OFF)`);
+      if (props.activeTab) lines.push(`${indent}${varName}.set_active(${props.activeTab}, lv.ANIM_OFF)`);
       break;
     }
 
