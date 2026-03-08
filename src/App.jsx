@@ -44,7 +44,7 @@ function App() {
       <PluginManager />
 
       <footer className="status-bar">
-        <span>LVGL Visual Editor v2.0.0</span>
+        <span>LVGL 9.3 Visual Editor v3.0.0</span>
         <span>Ready</span>
       </footer>
     </div>

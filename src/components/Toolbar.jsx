@@ -8,6 +8,9 @@ const Toolbar = () => {
   const {
     projectName,
     setProjectName,
+    canvasSize,
+    setCanvasSize,
+    displayPresets,
     zoom,
     setZoom,
     gridEnabled,
@@ -24,6 +27,14 @@ const Toolbar = () => {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [showAssetManager, setShowAssetManager] = useState(false);
+  const [customWidth, setCustomWidth] = useState(canvasSize.width);
+  const [customHeight, setCustomHeight] = useState(canvasSize.height);
+
+  // Keep local inputs in sync when canvasSize changes (e.g., preset or load project)
+  useEffect(() => {
+    setCustomWidth(canvasSize.width);
+    setCustomHeight(canvasSize.height);
+  }, [canvasSize.width, canvasSize.height]);
 
   const handleNewProject = () => {
     if (confirm('Create a new project? Unsaved changes will be lost.')) {
@@ -41,7 +52,6 @@ const Toolbar = () => {
         alert('Failed to save project: ' + (result.error || 'Unknown error'));
       }
     } else {
-      // Fallback for browser testing
       const projectData = getProjectData();
       const dataStr = JSON.stringify(projectData, null, 2);
       const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
@@ -71,6 +81,34 @@ const Toolbar = () => {
   const handleZoomIn = () => setZoom(zoom + 0.1);
   const handleZoomOut = () => setZoom(zoom - 0.1);
   const handleZoomReset = () => setZoom(1);
+
+  const handlePresetChange = (e) => {
+    const presetName = e.target.value;
+    if (presetName === 'custom') return;
+    const preset = displayPresets.find(p => p.name === presetName);
+    if (preset) {
+      setCanvasSize({ width: preset.width, height: preset.height });
+    }
+  };
+
+  const handleCustomSizeApply = () => {
+    const w = Math.max(64, Math.min(4096, parseInt(customWidth) || 1024));
+    const h = Math.max(64, Math.min(4096, parseInt(customHeight) || 600));
+    setCanvasSize({ width: w, height: h });
+    setCustomWidth(w);
+    setCustomHeight(h);
+  };
+
+  const handleSizeKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleCustomSizeApply();
+    }
+  };
+
+  // Find matching preset
+  const currentPreset = displayPresets.find(
+    p => p.width === canvasSize.width && p.height === canvasSize.height
+  );
 
   // Handle menu commands from Electron
   useEffect(() => {
@@ -130,36 +168,68 @@ const Toolbar = () => {
 
         <div className="toolbar-section">
           <button className="toolbar-btn" onClick={handleNewProject} title="New Project">
-            📄 New
+            New
           </button>
           <button className="toolbar-btn" onClick={handleSaveProject} title="Save Project">
-            💾 Save
+            Save
           </button>
           <button className="toolbar-btn" onClick={handleLoadProject} title="Load Project">
-            📂 Load
+            Load
           </button>
         </div>
 
         <div className="toolbar-section toolbar-divider">
-          <button className="toolbar-btn" onClick={undo} title="Undo">
-            ↶ Undo
-          </button>
-          <button className="toolbar-btn" onClick={redo} title="Redo">
-            ↷ Redo
-          </button>
+          <button className="toolbar-btn" onClick={undo} title="Undo">Undo</button>
+          <button className="toolbar-btn" onClick={redo} title="Redo">Redo</button>
+        </div>
+
+        {/* Display size controls */}
+        <div className="toolbar-section toolbar-divider">
+          <div className="display-size-controls">
+            <select
+              className="display-preset-select"
+              value={currentPreset ? currentPreset.name : 'custom'}
+              onChange={handlePresetChange}
+              title="Display preset"
+            >
+              {displayPresets.map((preset) => (
+                <option key={preset.name} value={preset.name}>
+                  {preset.name}
+                </option>
+              ))}
+              {!currentPreset && <option value="custom">Custom</option>}
+            </select>
+            <input
+              type="number"
+              className="canvas-size-input"
+              value={customWidth}
+              onChange={(e) => setCustomWidth(e.target.value)}
+              onBlur={handleCustomSizeApply}
+              onKeyDown={handleSizeKeyDown}
+              title="Canvas width"
+              min="64"
+              max="4096"
+            />
+            <span className="canvas-size-separator">x</span>
+            <input
+              type="number"
+              className="canvas-size-input"
+              value={customHeight}
+              onChange={(e) => setCustomHeight(e.target.value)}
+              onBlur={handleCustomSizeApply}
+              onKeyDown={handleSizeKeyDown}
+              title="Canvas height"
+              min="64"
+              max="4096"
+            />
+          </div>
         </div>
 
         <div className="toolbar-section toolbar-divider">
-          <button className="toolbar-btn" onClick={handleZoomOut} title="Zoom Out">
-            🔍−
-          </button>
+          <button className="toolbar-btn" onClick={handleZoomOut} title="Zoom Out">-</button>
           <span className="zoom-display">{Math.round(zoom * 100)}%</span>
-          <button className="toolbar-btn" onClick={handleZoomIn} title="Zoom In">
-            🔍+
-          </button>
-          <button className="toolbar-btn" onClick={handleZoomReset} title="Reset Zoom">
-            Reset
-          </button>
+          <button className="toolbar-btn" onClick={handleZoomIn} title="Zoom In">+</button>
+          <button className="toolbar-btn" onClick={handleZoomReset} title="Reset Zoom">1:1</button>
         </div>
 
         <div className="toolbar-section toolbar-divider">
@@ -179,14 +249,14 @@ const Toolbar = () => {
             onClick={() => setShowTemplateSelector(true)}
             title="Apply Screen Template"
           >
-            📐 Templates
+            Templates
           </button>
           <button
             className="toolbar-btn"
             onClick={() => setShowAssetManager(true)}
             title="Manage Assets"
           >
-            🖼️ Assets
+            Assets
           </button>
         </div>
 
@@ -196,7 +266,7 @@ const Toolbar = () => {
             onClick={() => setShowExportModal(true)}
             title="Export Code"
           >
-            📤 Export Code
+            Export Code
           </button>
         </div>
       </div>
