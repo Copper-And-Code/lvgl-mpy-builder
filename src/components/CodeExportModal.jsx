@@ -6,7 +6,7 @@ import { getAvailableArchitectures } from '../generators/templateLoader';
 
 const CodeExportModal = ({ onClose }) => {
   const { getProjectData, targetArchitecture, setTargetArchitecture } = useStore();
-  const [language, setLanguage] = useState('c');
+  const [language, setLanguage] = useState('micropython');
   const [architecture, setArchitecture] = useState(targetArchitecture);
   const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(true);

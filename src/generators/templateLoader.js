@@ -15,7 +15,7 @@ export const ARCHITECTURES = {
 };
 
 // Default architecture
-export const DEFAULT_ARCHITECTURE = ARCHITECTURES.UNIX;
+export const DEFAULT_ARCHITECTURE = ARCHITECTURES.STM32;
 
 // Default templates (fallback if external files are not available)
 // Updated for LVGL 9.3 API
