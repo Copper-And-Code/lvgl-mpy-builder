@@ -9,13 +9,26 @@ const useStore = create((set, get) => ({
   projectPath: null,
   targetArchitecture: DEFAULT_ARCHITECTURE, // v2.3: Target architecture for code generation
 
+  // Display presets for quick configuration
+  displayPresets: [
+    { name: '1024x600 (7" LVGL Default)', width: 1024, height: 600 },
+    { name: '800x480 (5" TFT)', width: 800, height: 480 },
+    { name: '480x320 (3.5" TFT)', width: 480, height: 320 },
+    { name: '320x240 (2.8" TFT)', width: 320, height: 240 },
+    { name: '240x240 (1.3" Square)', width: 240, height: 240 },
+    { name: '128x64 (OLED)', width: 128, height: 64 },
+    { name: '480x272 (4.3" TFT)', width: 480, height: 272 },
+    { name: '1280x720 (HD)', width: 1280, height: 720 },
+    { name: '1920x1080 (Full HD)', width: 1920, height: 1080 },
+  ],
+
   // Multi-page support (v1.2)
   pages: [
     {
       id: 'page_1',
       name: 'Main Screen',
       widgets: [],
-      canvasSize: { width: 800, height: 480 },
+      canvasSize: { width: 1024, height: 600 },
     }
   ],
   currentPageId: 'page_1',
@@ -32,7 +45,7 @@ const useStore = create((set, get) => ({
   // Canvas state
   widgets: [],
   selectedWidgetId: null,
-  canvasSize: { width: 800, height: 480 }, // Default LVGL display size
+  canvasSize: { width: 1024, height: 600 }, // Default LVGL display size (configurable)
   zoom: 1,
   gridEnabled: true,
   snapToGrid: true,
@@ -50,7 +63,17 @@ const useStore = create((set, get) => ({
 
   setTargetArchitecture: (architecture) => set({ targetArchitecture: architecture }),
 
-  setCanvasSize: (size) => set({ canvasSize: size }),
+  setCanvasSize: (size) => {
+    set({ canvasSize: size });
+    // Also update current page's canvas size
+    get().savePageWidgets();
+  },
+
+  applyDisplayPreset: (preset) => {
+    const size = { width: preset.width, height: preset.height };
+    set({ canvasSize: size });
+    get().savePageWidgets();
+  },
 
   setZoom: (zoom) => set({ zoom: Math.max(0.25, Math.min(2, zoom)) }),
 
@@ -212,11 +235,12 @@ const useStore = create((set, get) => ({
   // Page management (v1.2)
   addPage: (name) => {
     const id = `page_${uuidv4()}`;
+    const currentCanvasSize = get().canvasSize;
     const newPage = {
       id,
       name: name || `Page ${get().pages.length + 1}`,
       widgets: [],
-      canvasSize: { width: 800, height: 480 },
+      canvasSize: { ...currentCanvasSize },
     };
 
     set((state) => ({
@@ -521,7 +545,7 @@ const useStore = create((set, get) => ({
         id: 'page_1',
         name: 'Main Screen',
         widgets: [],
-        canvasSize: { width: 800, height: 480 },
+        canvasSize: { width: 1024, height: 600 },
       }],
       currentPageId: 'page_1',
       widgets: [],

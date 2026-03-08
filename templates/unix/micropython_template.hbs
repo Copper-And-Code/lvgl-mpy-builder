@@ -1,8 +1,11 @@
 """
-Auto-generated LVGL UI Code for MicroPython
+Auto-generated LVGL 9.3 UI Code for MicroPython
 Project: {{projectName}}
 Generated: {{generatedDate}}
 Display Size: {{canvasWidth}}x{{canvasHeight}}
+
+LVGL Version: 9.3
+Target: Unix/Linux
 
 This is a customizable template file.
 You can modify this file to change the structure of the generated code.
@@ -25,7 +28,7 @@ import lvgl as lv
 def {{this.name}}(e):
     """Event handler for {{this.type}}"""
     code = e.get_code()
-    obj = e.get_target()
+    obj = e.get_target_obj()
 
     if code == lv.EVENT.{{this.eventType}}:
         {{this.code}}
@@ -37,10 +40,10 @@ def {{functionName}}(parent=None):
     Create the UI for {{projectName}}
 
     Args:
-        parent: Parent object (use lv.scr_act() for screen)
+        parent: Parent object (use lv.screen_active() for screen)
     """
     if parent is None:
-        parent = lv.scr_act()
+        parent = lv.screen_active()
 
 {{#each widgets}}
 {{{this}}}
@@ -52,7 +55,7 @@ def {{functionName}}_init():
     """
     screen = lv.obj()
     {{functionName}}(screen)
-    lv.scr_load(screen)
+    lv.screen_load(screen)
 
 # Example usage:
 # {{functionName}}_init()
