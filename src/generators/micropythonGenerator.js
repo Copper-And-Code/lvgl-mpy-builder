@@ -199,13 +199,13 @@ function generateWidgetCode(widget, widgets, indent = '    ') {
       lines.push(`${indent}${varName}.set_pos(${props.x}, ${props.y})`);
       lines.push(`${indent}${varName}.set_size(${props.width}, ${props.height})`);
       lines.push(`${indent}${varName}.set_range(${props.min || 0}, ${props.max || 100})`);
-      lines.push(`${indent}${varName}.set_value(${props.value || 50}, lv.ANIM_OFF)`);
+      lines.push(`${indent}${varName}.set_value(${props.value || 50}, 0)`);
       if (props.indicatorColor) lines.push(`${indent}${varName}.set_style_bg_color(${colorToLvglColor(props.indicatorColor)}, lv.PART.INDICATOR)`);
       if (props.knobColor) lines.push(`${indent}${varName}.set_style_bg_color(${colorToLvglColor(props.knobColor)}, lv.PART.KNOB)`);
       if (props.mode === 'symmetrical') lines.push(`${indent}${varName}.set_mode(lv.SLIDER_MODE.SYMMETRICAL)`);
       if (props.mode === 'range' || props.isRange) {
         lines.push(`${indent}${varName}.set_mode(lv.SLIDER_MODE.RANGE)`);
-        if (props.leftValue !== undefined) lines.push(`${indent}${varName}.set_left_value(${props.leftValue}, lv.ANIM_OFF)`);
+        if (props.leftValue !== undefined) lines.push(`${indent}${varName}.set_left_value(${props.leftValue}, 0)`);
       }
       break;
     }
@@ -275,7 +275,7 @@ function generateWidgetCode(widget, widgets, indent = '    ') {
       lines.push(`${indent}${varName}.set_size(${props.width}, ${props.height})`);
       const mpRollerMode = props.infinite ? 'lv.ROLLER_MODE.INFINITE' : 'lv.ROLLER_MODE.NORMAL';
       if (props.options) lines.push(`${indent}${varName}.set_options("${props.options.replace(/\n/g, '\\n')}", ${mpRollerMode})`);
-      if (props.selected) lines.push(`${indent}${varName}.set_selected(${props.selected}, lv.ANIM_OFF)`);
+      if (props.selected) lines.push(`${indent}${varName}.set_selected(${props.selected}, 0)`);
       if (props.visibleRows) lines.push(`${indent}${varName}.set_visible_row_count(${props.visibleRows})`);
       if (props.selectedColor) lines.push(`${indent}${varName}.set_style_bg_color(${colorToLvglColor(props.selectedColor)}, lv.PART.SELECTED)`);
       if (props.textColor) lines.push(`${indent}${varName}.set_style_text_color(${colorToLvglColor(props.textColor)}, 0)`);
@@ -327,7 +327,7 @@ function generateWidgetCode(widget, widgets, indent = '    ') {
       lines.push(`${indent}${varName}.set_pos(${props.x}, ${props.y})`);
       lines.push(`${indent}${varName}.set_size(${props.width}, ${props.height})`);
       lines.push(`${indent}${varName}.set_range(${props.min || 0}, ${props.max || 100})`);
-      const animFlag = props.animated !== false ? 'lv.ANIM_ON' : 'lv.ANIM_OFF';
+      const animFlag = props.animated !== false ? '1' : '0';
       lines.push(`${indent}${varName}.set_value(${props.value || 50}, ${animFlag})`);
       if (props.mode && props.mode !== 'LV_BAR_MODE_NORMAL') {
         const mpMode = props.mode.replace('LV_BAR_MODE_', '');
@@ -335,7 +335,7 @@ function generateWidgetCode(widget, widgets, indent = '    ') {
       }
       if (props.indicatorColor) lines.push(`${indent}${varName}.set_style_bg_color(${colorToLvglColor(props.indicatorColor)}, lv.PART.INDICATOR)`);
       if (props.startValue && props.mode === 'LV_BAR_MODE_RANGE') {
-        lines.push(`${indent}${varName}.set_start_value(${props.startValue}, lv.ANIM_OFF)`);
+        lines.push(`${indent}${varName}.set_start_value(${props.startValue}, 0)`);
       }
       break;
     }
@@ -506,7 +506,7 @@ function generateWidgetCode(widget, widgets, indent = '    ') {
           lines.push(`${indent}${varName}.add_tab("${tab.trim()}")`);
         });
       }
-      if (props.activeTab) lines.push(`${indent}${varName}.set_active(${props.activeTab}, lv.ANIM_OFF)`);
+      if (props.activeTab) lines.push(`${indent}${varName}.set_active(${props.activeTab}, 0)`);
       break;
     }
 
