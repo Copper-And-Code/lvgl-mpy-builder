@@ -9,7 +9,7 @@ LVGL Version: 9.3
 
 This is a customizable template file for multi-page STM32 MicroPython projects.
 """
-
+import display_driver 
 import lvgl as lv
 
 {{#if hasEventCallbacks}}
@@ -105,5 +105,5 @@ def {{baseName}}_init():
     {{baseName}}_load_page(0)
 
 # Example usage:
-# {{baseName}}_init()
-# {{baseName}}_load_page(1)  # Switch to page 1
+{{baseName}}_init()
+{{baseName}}_load_page(1)  # Switch to page 1
