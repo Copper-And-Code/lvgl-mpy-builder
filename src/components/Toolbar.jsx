@@ -68,8 +68,12 @@ const Toolbar = () => {
     if (window.electron) {
       const result = await window.electron.loadProject();
       if (result.success) {
-        loadProject(result.data);
-        alert('Project loaded successfully!');
+        try {
+          loadProject(result.data);
+          alert('Project loaded successfully!');
+        } catch (error) {
+          alert('Failed to load project: ' + error.message);
+        }
       } else if (result.error) {
         alert('Failed to load project: ' + result.error);
       }

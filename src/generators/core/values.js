@@ -66,13 +66,11 @@ export const v = {
 
 /**
  * Map a property value such as 'LV_FLEX_FLOW_ROW' or 'ROW' onto a member of
- * an enum, accepting only the listed members (plus optional aliases for
- * legacy values). Returns null for anything else.
+ * an enum, accepting only the listed members. Returns null for anything else.
  */
-export function enumMember(value, enumName, members, aliases = {}) {
+export function enumMember(value, enumName, members) {
   if (value === undefined || value === null) return null;
   const raw = String(value).trim();
-  if (aliases[raw]) return aliases[raw];
   const member = raw.startsWith(`LV_${enumName}_`) ? raw.slice(`LV_${enumName}_`.length) : raw.toUpperCase();
   return members.includes(member) ? member : null;
 }

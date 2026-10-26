@@ -186,17 +186,10 @@ export function buildProjectCode(projectData, language) {
     widgets: page.nodes.map((node) => `${emitter.emit(node.ops)}\n`),
   }));
 
-  const eventCallbacks = [...handlers.values()].map((handler) => {
-    const [firstCode, firstBody] = handler.branches.entries().next().value;
-    return {
-      name: handler.name,
-      body: renderHandlerBody(handler, language),
-      // Fields of the previous template format (one event per handler)
-      type: `LV_EVENT_${firstCode}`,
-      eventType: firstCode,
-      code: firstBody,
-    };
-  });
+  const eventCallbacks = [...handlers.values()].map((handler) => ({
+    name: handler.name,
+    body: renderHandlerBody(handler, language),
+  }));
 
   const declarations = language === 'c'
     ? cDeclarations({ widgetNames: [...widgetNames], fonts, images: [...images.values()], opaHelper })

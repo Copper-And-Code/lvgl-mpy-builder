@@ -64,6 +64,10 @@ describe('store: pages', () => {
     expect(pages.find((p) => p.id === secondPageId).widgets).toHaveLength(2);
   });
 
+  it('loadProject rejects files without pages', () => {
+    expect(() => store().loadProject({ projectName: 'Old', widgets: [] })).toThrow(/no pages/);
+  });
+
   it('loadProject loads the widgets of the saved current page', () => {
     const project = {
       projectName: 'Saved',

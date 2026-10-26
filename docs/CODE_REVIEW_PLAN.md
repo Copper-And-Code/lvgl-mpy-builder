@@ -240,6 +240,8 @@ Obiettivo: il codice generato **compila e gira**, verificato in CI.
    - **Simboli:** script Python 3.15 che estrae dal binding i simboli esportati e fallisce se il profilo `mpy-lvgl-9.3` usa nomi inesistenti.
 
 #### Stato della fase 1: completata
+_Aggiornamento: rimosso il supporto ai dati dei formati precedenti (formato v1.1 senza pagine nello store, valori `LV_LABEL_LONG_*` pre-9.1, campi dei template a un solo evento), mai usati. Un file senza pagine ora viene rifiutato con un messaggio._
+
 **Nuovo nucleo** in `src/generators/core/`:
 - `identifiers.js`: identificatori univoci per tutto il progetto, validi in C e Python, mai uguali a parole riservate, builtin, simboli `lv_` o nomi usati dai template.
 - `values.js`: numeri, colori (anche `#RGB`), enum, font e stringhe validati. Un valore non valido fa saltare la chiamata, non finisce nel codice.
@@ -294,12 +296,11 @@ Obiettivo: il codice generato **compila e gira**, verificato in CI.
 - `'unsafe-eval'` resta nella CSP: i template personalizzabili sono ancora compilati a runtime.
 - Il timestamp `Generated:` è ancora presente (P2).
 - I tipi di animazione `scale`, `rotate`, `move_xy` e `size` dell'editor non sono supportati: nel codice generato compare un commento.
-- I progetti salvati con i vecchi valori `LV_LABEL_LONG_*` continuano a generare codice corretto, ma il menu a tendina delle proprietà li mostra finché non vengono riselezionati. La migrazione dei dati è prevista nella fase 2.
 
 ### Fase 2 — Modello dati e store (1 settimana)
 1. Una sola fonte di verità, `pages[]`, con selettori sulla pagina corrente. Aggiungere `renameWidget`, cancellazione a cascata, duplicazione con rimappatura completa degli id e conversione delle coordinate quando si cambia genitore.
 2. History per pagina con raggruppamento delle modifiche: commit su blur o fine drag e debounce sui campi.
-3. Schema JSON del progetto con `schemaVersion`, migrazioni (v1.x → v3) e validazione al caricamento, così i tipi sconosciuti non mandano più in crash la UI (`definition.icon` su `undefined`).
+3. Validazione del file di progetto al caricamento, così i tipi sconosciuti non mandano più in crash la UI (`definition.icon` su `undefined`). **Nessuna migrazione:** i formati precedenti non sono mai stati usati, quindi è supportato solo il formato attuale.
 4. Canvas gerarchico, con i figli annidati nel `Group` del genitore e coordinate relative come in LVGL. Selettori Zustand con `shallow`.
 
 ### Fase 3 — Electron e piattaforma (1 settimana)

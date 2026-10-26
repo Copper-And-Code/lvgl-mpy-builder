@@ -486,44 +486,25 @@ const useStore = create((set, get) => ({
 
   // Project operations
   loadProject: (projectData) => {
-    // Support for v2.0+ multi-page format with component library
-    if (projectData.pages) {
-      // Load the widgets of the page that becomes current, so that the next
-      // savePageWidgets() does not overwrite it with another page's widgets
-      const currentPage =
-        projectData.pages.find(p => p.id === projectData.currentPageId) || projectData.pages[0];
-      set({
-        projectName: projectData.projectName || 'Untitled Project',
-        pages: projectData.pages,
-        currentPageId: currentPage.id,
-        widgets: currentPage.widgets || [],
-        canvasSize: currentPage.canvasSize || { width: 800, height: 480 },
-        assets: projectData.assets || { images: [], fonts: [] },
-        componentLibrary: projectData.componentLibrary || [],
-        selectedWidgetId: null,
-        history: [],
-        historyIndex: -1,
-      });
-    } else {
-      // Legacy v1.1 format
-      set({
-        projectName: projectData.projectName || 'Untitled Project',
-        pages: [{
-          id: 'page_1',
-          name: 'Main Screen',
-          widgets: projectData.widgets || [],
-          canvasSize: projectData.canvasSize || { width: 800, height: 480 },
-        }],
-        currentPageId: 'page_1',
-        widgets: projectData.widgets || [],
-        canvasSize: projectData.canvasSize || { width: 800, height: 480 },
-        assets: { images: [], fonts: [] },
-        componentLibrary: [],
-        selectedWidgetId: null,
-        history: [],
-        historyIndex: -1,
-      });
+    if (!Array.isArray(projectData?.pages) || projectData.pages.length === 0) {
+      throw new Error('Unsupported project file: no pages found');
     }
+    // Load the widgets of the page that becomes current, so that the next
+    // savePageWidgets() does not overwrite it with another page's widgets
+    const currentPage =
+      projectData.pages.find(p => p.id === projectData.currentPageId) || projectData.pages[0];
+    set({
+      projectName: projectData.projectName || 'Untitled Project',
+      pages: projectData.pages,
+      currentPageId: currentPage.id,
+      widgets: currentPage.widgets || [],
+      canvasSize: currentPage.canvasSize || { width: 800, height: 480 },
+      assets: projectData.assets || { images: [], fonts: [] },
+      componentLibrary: projectData.componentLibrary || [],
+      selectedWidgetId: null,
+      history: [],
+      historyIndex: -1,
+    });
     get().saveHistory();
   },
 

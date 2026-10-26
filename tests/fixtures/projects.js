@@ -13,7 +13,7 @@ const COMMENT_CODE = '// handled by the application';
 /** Every widget type with defaults plus options that exercise each code path. */
 export function allWidgetsProject() {
   const overrides = {
-    label: { longMode: 'LV_LABEL_LONG_DOT', textAlign: 'LV_TEXT_ALIGN_RIGHT', recolor: true, fontSize: 18 },
+    label: { longMode: 'LV_LABEL_LONG_MODE_DOTS', textAlign: 'LV_TEXT_ALIGN_RIGHT', recolor: true, fontSize: 18 },
     slider: { mode: 'range', leftValue: 10, value: 0 },
     switch: { checked: true, disabled: true },
     checkbox: { checked: true },

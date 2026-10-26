@@ -146,13 +146,6 @@ function animate(b, { prop, start, end, duration, delay = 0, repeat = null, reve
 }
 
 const LABEL_LONG_MODES = ['WRAP', 'DOTS', 'SCROLL', 'SCROLL_CIRCULAR', 'CLIP'];
-const LEGACY_LABEL_LONG = {
-  LV_LABEL_LONG_WRAP: 'WRAP',
-  LV_LABEL_LONG_DOT: 'DOTS',
-  LV_LABEL_LONG_SCROLL: 'SCROLL',
-  LV_LABEL_LONG_SCROLL_CIRCULAR: 'SCROLL_CIRCULAR',
-  LV_LABEL_LONG_CLIP: 'CLIP',
-};
 const TEXT_ALIGNS = ['AUTO', 'LEFT', 'CENTER', 'RIGHT'];
 const DIRS = ['NONE', 'LEFT', 'RIGHT', 'TOP', 'BOTTOM', 'HOR', 'VER', 'ALL'];
 const BAR_MODES = ['NORMAL', 'SYMMETRICAL', 'RANGE'];
@@ -176,7 +169,7 @@ const builders = {
     b.set('lv_label_set_text', v.str(p.text ?? 'Label'));
     b.style('text_color', v.color(p.textColor));
     b.font(p.fontSize);
-    const longMode = enumMember(p.longMode, 'LABEL_LONG_MODE', LABEL_LONG_MODES, LEGACY_LABEL_LONG);
+    const longMode = enumMember(p.longMode, 'LABEL_LONG_MODE', LABEL_LONG_MODES);
     if (longMode && longMode !== 'WRAP') b.set('lv_label_set_long_mode', v.enum('LABEL_LONG_MODE', longMode));
     const align = enumMember(p.textAlign, 'TEXT_ALIGN', TEXT_ALIGNS);
     if (align) b.style('text_align', v.enum('TEXT_ALIGN', align));
