@@ -239,6 +239,63 @@ Obiettivo: il codice generato **compila e gira**, verificato in CI.
    - **MicroPython:** compilare il port unix di `lv_micropython` (MicroPython 1.24.1 + LVGL 9.3) ed eseguire l'output in modalità headless; basta che `import` e `*_init()` non diano eccezioni.
    - **Simboli:** script Python 3.15 che estrae dal binding i simboli esportati e fallisce se il profilo `mpy-lvgl-9.3` usa nomi inesistenti.
 
+#### Stato della fase 1: completata
+**Nuovo nucleo** in `src/generators/core/`:
+- `identifiers.js`: identificatori univoci per tutto il progetto, validi in C e Python, mai uguali a parole riservate, builtin, simboli `lv_` o nomi usati dai template.
+- `values.js`: numeri, colori (anche `#RGB`), enum, font e stringhe validati. Un valore non valido fa saltare la chiamata, non finisce nel codice.
+- `widgets.js`: i 30 widget descritti una sola volta come operazioni con nomi di funzione C.
+- `emit.js`: due emitter. Il Python ricava metodo, classe ed enum dal nome C con le stesse regole del binding (`lv_slider_set_range` → `slider.set_range`, `LV_LABEL_LONG_MODE_DOTS` → `lv.label.LONG_MODE.DOTS`).
+- `project.js`: ordinamento topologico (cicli e genitori mancanti diventano radici) e handler raggruppati per nome, con un ramo per evento. Se lo stesso nome ha codice diverso per lo stesso evento, nasce un secondo handler.
+
+`cGenerator.js` e `micropythonGenerator.js` ora sono solo involucri sottili.
+
+**Bug risolti:**
+- Tutti i P0 dei generatori: P0-4, P0-5, P0-6, P0-7 e P0-8.
+- P1-6 (i valori 0 non vengono più sostituiti) e P1-7 (stili e font).
+- Ordine di creazione dei figli.
+- Semantica dei tick dello `scale`.
+- Array inutile del `msgbox`.
+
+**Font:**
+- C: taglia Montserrat pari più vicina, con commento su cosa abilitare in `lv_conf.h`.
+- MicroPython: 14, 16 o 24, le uniche presenti nel firmware di default.
+
+**Stili e handle:**
+- I `customStyles` sono applicati nei generatori e nell'anteprima del canvas (`src/core/previewProps.js`).
+- I widget sono raggiungibili come `ui_<nome>` in C e `objects["<nome>"]` in MicroPython.
+
+**Riferimenti API** (`scripts/lvgl-api/`, script Python), in `tests/fixtures/`:
+- simboli C di LVGL 9.6 senza alias, più l'elenco delle funzioni `LV_DEPRECATED`;
+- API MicroPython presa dai metadati della **build reale** del firmware lv_micropython.
+
+**Test:** 84 in tutto, di cui 75 sempre attivi e 9 che richiedono gli strumenti reali.
+- Ogni simbolo C deve esistere in 9.6 e non essere deprecato.
+- Ogni classe, metodo, enum e funzione Python deve esistere nel firmware, verificando anche la classe del destinatario di ogni chiamata.
+- Sintassi Python valida, unicità dei nomi, genitori creati prima dei figli.
+- Progetti di prova: tutti i 30 widget, più un progetto "ostile" con nomi in conflitto, stringhe con `"`, `\`, `*/`, `"""` e `??=`, cicli di parentela e valori non validi.
+
+**CI** (`.github/workflows/ci.yml`):
+- Lint, test e build.
+- Un job che compila il C generato con `gcc -DLV_DISABLE_API_MAPPING -Werror=deprecated-declarations` sugli header di LVGL 9.6.
+- Lo stesso job compila il firmware lv_micropython (unix, variante `lvgl`) ed **esegue** il Python generato con un display virtuale: tutte le pagine, animazioni ed eventi, con `gc.collect()` a ogni tick.
+- In locale tutti questi test passano. Il workflow non è ancora girato su GitHub, ma i passi di build del firmware sono stati riprodotti in locale.
+
+**Scoperte emerse dagli strumenti reali**, che correggono la sezione 1:
+- Il firmware lv_micropython **non esporta `lv.spinner` né `lv.list`**, anche se `lv_conf.h` li abilita, perché il binding preprocessa solo `lvgl_private.h`. In MicroPython lo spinner ora è un arc ruotato da un'animazione infinita.
+- LVGL 9.6 **depreca** `lv_list`, `lv_win` e `lv_menu`. Il generatore li costruisce in entrambi i linguaggi con widget base in colonna flex, come raccomanda LVGL. **Cambio di comportamento:** il menu non è più navigabile con sidebar, è un titolo con una colonna di voci.
+- LVGL 9.6 depreca anche:
+  - `lv_obj_add_flag`/`lv_obj_remove_flag`: in C si usano `lv_obj_set_hidden`/`lv_obj_set_clickable`, in MicroPython 9.3 restano i flag;
+  - `lv_spangroup_set_mode`: in C la modalità dello span si ottiene con la dimensione (`LV_SIZE_CONTENT`).
+- Di conseguenza il C generato richiede LVGL 9.6. Non è più garantito che compili su 9.3, perché `lv_obj_set_hidden` non esiste in 9.3.
+
+**Deviazioni dal piano:**
+- Nessuna tabella di "profili" né scelta del profilo nel dialog: ogni linguaggio ha un solo target. Le differenze sono rami espliciti nei builder (`b.isC`), verificati dai test.
+- Niente struct `ui_t` né header `ui.h`: l'export è un file solo. Il C dichiara globali `ui_<nome>` da usare con `extern`.
+- `'unsafe-eval'` resta nella CSP: i template personalizzabili sono ancora compilati a runtime.
+- Il timestamp `Generated:` è ancora presente (P2).
+- I tipi di animazione `scale`, `rotate`, `move_xy` e `size` dell'editor non sono supportati: nel codice generato compare un commento.
+- I progetti salvati con i vecchi valori `LV_LABEL_LONG_*` continuano a generare codice corretto, ma il menu a tendina delle proprietà li mostra finché non vengono riselezionati. La migrazione dei dati è prevista nella fase 2.
+
 ### Fase 2 — Modello dati e store (1 settimana)
 1. Una sola fonte di verità, `pages[]`, con selettori sulla pagina corrente. Aggiungere `renameWidget`, cancellazione a cascata, duplicazione con rimappatura completa degli id e conversione delle coordinate quando si cambia genitore.
 2. History per pagina con raggruppamento delle modifiche: commit su blur o fine drag e debounce sui campi.
@@ -264,7 +321,7 @@ Obiettivo: il codice generato **compila e gira**, verificato in CI.
 In alternativa, flag *experimental* disattivato di default e README corretto. **Consiglio di correggere il README in ogni caso**, perché oggi descrive funzioni che non esistono.
 
 ### Fase 5 — Allineamento a LVGL 9.6 e preparazione a v10 (continuativa)
-1. Generare la **data binding** con `lv_subject_t`, `lv_obj_bind_*` e `lv_label_bind_text` (observer, presenti in 9.6 in `core/lv_observer.h`), così i widget si legano a variabili applicative senza scrivere handler a mano.
+1. Generare la **data binding** con `lv_subject_t`, `lv_obj_bind_*` e `lv_label_bind_text` (observer, presenti in 9.6 in `core/lv_observer.h`), così i widget si legano a variabili applicative senza scrivere handler a mano. **Attenzione:** in 9.6 sono deprecati `lv_subject_init_*` e `lv_obj_bind_flag_if_*`/`lv_obj_bind_state_if_*` (vedi `deprecated` in `tests/fixtures/lvgl-c-symbols.json`), quindi prima va individuata l'API che li sostituisce.
 2. Interoperabilità con l'editor ufficiale di LVGL: negli header pubblici di 9.6.0 non c'è un'API XML, quindi prima di pianificare un import/export va verificato dove si trova oggi quel formato.
 3. Quando `lv_micropython` passerà a LVGL ≥ 9.5 o 9.6 e a MicroPython ≥ 1.27, attivare il profilo `mpy-lvgl-9.6`: grazie alla fase 1 servirà solo aggiungere dati.
 4. Tenere attivo in CI il job "C con `LV_DISABLE_API_MAPPING`", che dà la garanzia di compatibilità con v10.

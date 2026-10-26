@@ -1,8 +1,10 @@
 import React from 'react';
 import { Group, Rect, Text, Circle, Line } from 'react-konva';
+import { previewProps } from '../core/previewProps';
 
 const WidgetRenderer = ({ widget, isSelected, onSelect, onDragEnd, onDragStart }) => {
-  const { type, props } = widget;
+  const { type } = widget;
+  const props = previewProps(widget);
 
   const renderWidget = () => {
     switch (type) {

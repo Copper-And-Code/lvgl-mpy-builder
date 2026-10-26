@@ -1,28 +1,31 @@
 """
-Auto-generated LVGL 9.3 UI Code for MicroPython on STM32
+Auto-generated LVGL UI Code for MicroPython on STM32
 Project: {{projectName}}
 Generated: {{generatedDate}}
 Display Size: {{canvasWidth}}x{{canvasHeight}}
 Target: STM32 with MicroPython
 
-LVGL Version: 9.3
+LVGL Version: 9.3 (lv_micropython binding)
 
 This is a customizable template file for STM32 MicroPython targets.
 """
 import display_driver 
 import lvgl as lv
 
+{{#if declarations}}
+{{declarations}}
+
+{{/if}}
+
 {{#if hasEventCallbacks}}
 # Event callback implementations
 {{#each eventCallbacks}}
 def {{this.name}}(e):
-    """Event handler for {{this.type}}"""
+    """Event handler (see the branches below for the handled events)"""
     code = e.get_code()
     obj = e.get_target_obj()
 
-    if code == lv.EVENT.{{this.eventType}}:
-        {{indent this.code 8}}
-        pass
+    {{indent this.body 4}}
 
 {{/each}}
 {{/if}}

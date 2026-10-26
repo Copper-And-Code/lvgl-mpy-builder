@@ -1,16 +1,21 @@
 /*
- * Auto-generated LVGL 9.3 UI Code for ESP32
+ * Auto-generated LVGL UI Code for ESP32
  * Project: {{projectName}}
  * Generated: {{generatedDate}}
  * Display Size: {{canvasWidth}}x{{canvasHeight}}
  * Target: ESP32 with LVGL (ESP-IDF or Arduino)
  *
- * LVGL Version: 9.3
+ * LVGL Version: 9.6 (no deprecated APIs)
  *
  * This is a customizable template file for ESP32 targets.
  */
 
 #include "lvgl.h"
+
+{{#if declarations}}
+{{declarations}}
+
+{{/if}}
 // Uncomment based on your framework:
 // #include "esp_log.h"        // For ESP-IDF
 // #include <Arduino.h>        // For Arduino
@@ -44,10 +49,9 @@ static void {{this.name}}(lv_event_t *e)
 {
     lv_event_code_t code = lv_event_get_code(e);
     lv_obj_t *obj = lv_event_get_target_obj(e);
+    LV_UNUSED(obj);
 
-    if (code == {{this.type}}) {
-        {{indent this.code 8}}
-    }
+    {{indent this.body 4}}
 }
 
 {{/each}}

@@ -1,11 +1,11 @@
 """
-Auto-generated LVGL 9.3 UI Code for MicroPython (Multi-Page)
+Auto-generated LVGL UI Code for MicroPython (Multi-Page)
 Project: {{projectName}}
 Generated: {{generatedDate}}
 Pages: {{pageCount}}
 Target: Unix/Linux
 
-LVGL Version: 9.3
+LVGL Version: 9.3 (lv_micropython binding)
 
 This is a customizable template file for multi-page projects.
 You can modify this file to change the structure of the generated code.
@@ -13,17 +13,20 @@ You can modify this file to change the structure of the generated code.
 
 import lvgl as lv
 
+{{#if declarations}}
+{{declarations}}
+
+{{/if}}
+
 {{#if hasEventCallbacks}}
 # Event callback implementations
 {{#each eventCallbacks}}
 def {{this.name}}(e):
-    """Event handler for {{this.type}}"""
+    """Event handler (see the branches below for the handled events)"""
     code = e.get_code()
     obj = e.get_target_obj()
 
-    if code == lv.EVENT.{{this.eventType}}:
-        {{indent this.code 8}}
-        pass
+    {{indent this.body 4}}
 
 {{/each}}
 {{/if}}

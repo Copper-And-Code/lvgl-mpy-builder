@@ -2,18 +2,24 @@
 
 exports[`reference project snapshots (unix, bundled templates) > C 1`] = `
 "/*
- * Auto-generated LVGL 9.3 UI Code (Multi-Page)
+ * Auto-generated LVGL UI Code (Multi-Page)
  * Project: Demo & Co
  * Generated: 2026-01-01T00:00:00.000Z
  * Pages: 1
  *
- * LVGL Version: 9.3
+ * LVGL Version: 9.6 (no deprecated APIs)
  * Target: Unix/Linux
  *
  * This is a customizable template file for multi-page projects.
  */
 
 #include "lvgl.h"
+
+/* Widget handles (use \`extern lv_obj_t * ui_<name>;\` to access them from other files) */
+lv_obj_t * ui_panel_main;
+lv_obj_t * ui_title;
+lv_obj_t * ui_ok_button;
+
 
 /* Event callback declarations */
 static void on_ok(lv_event_t *e);
@@ -27,42 +33,39 @@ static int current_screen = 0;
  * Size: 480x320
  * Widgets: 3
  */
-void demo___co_create_main(lv_obj_t *parent)
+void demo_co_create_main(lv_obj_t *parent)
 {
     if (parent == NULL) {
         parent = lv_screen_active();
     }
 
-    /* Create panel: panel_main */
-    lv_obj_t *panel_main = lv_obj_create(parent);
-    lv_obj_set_pos(panel_main, 10, 10);
-    lv_obj_set_size(panel_main, 200, 100);
+    /* panel: panel_main */
+    ui_panel_main = lv_obj_create(parent);
+    lv_obj_set_pos(ui_panel_main, 10, 10);
+    lv_obj_set_size(ui_panel_main, 200, 100);
 
-    /* Create button: ok_button */
-    lv_obj_t *ok_button = lv_button_create(parent);
-    lv_obj_set_pos(ok_button, 20, 150);
-    lv_obj_set_size(ok_button, 80, 40);
-    lv_obj_t *ok_button_label = lv_label_create(ok_button);
+    /* label: title */
+    ui_title = lv_label_create(ui_panel_main);
+    lv_obj_set_pos(ui_title, 5, 5);
+    lv_obj_set_size(ui_title, 100, 20);
+    lv_label_set_text(ui_title, "Hello");
+
+    /* button: ok_button */
+    ui_ok_button = lv_button_create(parent);
+    lv_obj_set_pos(ui_ok_button, 20, 150);
+    lv_obj_set_size(ui_ok_button, 80, 40);
+    lv_obj_t * ok_button_label = lv_label_create(ui_ok_button);
     lv_label_set_text(ok_button_label, "OK");
     lv_obj_center(ok_button_label);
-    lv_obj_add_event_cb(ok_button, on_ok, LV_EVENT_CLICKED, NULL);
-
-    /* Animation: move_x */
-    lv_anim_t ok_button_anim_0001;
-    lv_anim_init(&ok_button_anim_0001);
-    lv_anim_set_var(&ok_button_anim_0001, ok_button);
-    lv_anim_set_time(&ok_button_anim_0001, 500);
-    lv_anim_set_delay(&ok_button_anim_0001, 0);
-    lv_anim_set_values(&ok_button_anim_0001, 0, 100);
-    lv_anim_set_path_cb(&ok_button_anim_0001, lv_anim_path_linear);
-    lv_anim_set_exec_cb(&ok_button_anim_0001, (lv_anim_exec_xcb_t)lv_obj_set_x);
-    lv_anim_start(&ok_button_anim_0001);
-
-    /* Create label: title */
-    lv_obj_t *title = lv_label_create(panel_main);
-    lv_obj_set_pos(title, 5, 5);
-    lv_obj_set_size(title, 100, 20);
-    lv_label_set_text(title, "Hello");
+    lv_obj_add_event_cb(ui_ok_button, on_ok, LV_EVENT_CLICKED, NULL);
+    lv_anim_t ok_button_anim;
+    lv_anim_init(&ok_button_anim);
+    lv_anim_set_var(&ok_button_anim, ui_ok_button);
+    lv_anim_set_values(&ok_button_anim, 0, 100);
+    lv_anim_set_duration(&ok_button_anim, 500);
+    lv_anim_set_path_cb(&ok_button_anim, lv_anim_path_linear);
+    lv_anim_set_exec_cb(&ok_button_anim, (lv_anim_exec_xcb_t)lv_obj_set_x);
+    lv_anim_start(&ok_button_anim);
 
 }
 
@@ -71,6 +74,7 @@ static void on_ok(lv_event_t *e)
 {
     lv_event_code_t code = lv_event_get_code(e);
     lv_obj_t *obj = lv_event_get_target_obj(e);
+    LV_UNUSED(obj);
 
     if (code == LV_EVENT_CLICKED) {
         if count > 0 and count < 10:
@@ -83,7 +87,7 @@ static void on_ok(lv_event_t *e)
  * Load a specific page by index
  * @param page_index Index of the page to load (0-0)
  */
-void demo___co_load_page(int page_index)
+void demo_co_load_page(int page_index)
 {
     if (page_index < 0 || page_index >= 1) {
         return;
@@ -94,7 +98,7 @@ void demo___co_load_page(int page_index)
 
         switch(page_index) {
             case 0:
-                demo___co_create_main(screens[0]);
+                demo_co_create_main(screens[0]);
                 break;
         }
     }
@@ -106,7 +110,7 @@ void demo___co_load_page(int page_index)
 /**
  * Load page with animation
  */
-void demo___co_load_page_anim(int page_index, lv_screen_load_anim_t anim, uint32_t time, uint32_t delay)
+void demo_co_load_page_anim(int page_index, lv_screen_load_anim_t anim, uint32_t time, uint32_t delay)
 {
     if (page_index < 0 || page_index >= 1) {
         return;
@@ -117,7 +121,7 @@ void demo___co_load_page_anim(int page_index, lv_screen_load_anim_t anim, uint32
 
         switch(page_index) {
             case 0:
-                demo___co_create_main(screens[0]);
+                demo_co_create_main(screens[0]);
                 break;
         }
     }
@@ -129,7 +133,7 @@ void demo___co_load_page_anim(int page_index, lv_screen_load_anim_t anim, uint32
 /**
  * Get current page index
  */
-int demo___co_get_current_page(void)
+int demo_co_get_current_page(void)
 {
     return current_screen;
 }
@@ -137,26 +141,26 @@ int demo___co_get_current_page(void)
 /**
  * Initialize all screens and show the first page
  */
-void demo___co_init(void)
+void demo_co_init(void)
 {
     for (int i = 0; i < 1; i++) {
         screens[i] = NULL;
     }
 
-    demo___co_load_page(0);
+    demo_co_load_page(0);
 }
 "
 `;
 
 exports[`reference project snapshots (unix, bundled templates) > MicroPython 1`] = `
 """"
-Auto-generated LVGL 9.3 UI Code for MicroPython (Multi-Page)
+Auto-generated LVGL UI Code for MicroPython (Multi-Page)
 Project: Demo & Co
 Generated: 2026-01-01T00:00:00.000Z
 Pages: 1
 Target: Unix/Linux
 
-LVGL Version: 9.3
+LVGL Version: 9.3 (lv_micropython binding)
 
 This is a customizable template file for multi-page projects.
 You can modify this file to change the structure of the generated code.
@@ -164,9 +168,13 @@ You can modify this file to change the structure of the generated code.
 
 import lvgl as lv
 
+# Created widgets, by name (e.g. objects["ok_button"])
+objects = {}
+
+
 # Event callback implementations
 def on_ok(e):
-    """Event handler for LV_EVENT_CLICKED"""
+    """Event handler (see the branches below for the handled events)"""
     code = e.get_code()
     obj = e.get_target_obj()
 
@@ -180,7 +188,7 @@ def on_ok(e):
 screens = [None] * 1
 current_screen = 0
 
-def demo___co_create_main(parent=None):
+def demo_co_create_main(parent=None):
     """
     Create page: Main
     Size: 480x320
@@ -189,39 +197,39 @@ def demo___co_create_main(parent=None):
     if parent is None:
         parent = lv.screen_active()
 
-    # Create panel: panel_main
+    # panel: panel_main
     panel_main = lv.obj(parent)
+    objects["panel_main"] = panel_main
     panel_main.set_pos(10, 10)
     panel_main.set_size(200, 100)
 
-    # Create button: ok_button
+    # label: title
+    title = lv.label(panel_main)
+    objects["title"] = title
+    title.set_pos(5, 5)
+    title.set_size(100, 20)
+    title.set_text("Hello")
+
+    # button: ok_button
     ok_button = lv.button(parent)
+    objects["ok_button"] = ok_button
     ok_button.set_pos(20, 150)
     ok_button.set_size(80, 40)
     ok_button_label = lv.label(ok_button)
     ok_button_label.set_text("OK")
     ok_button_label.center()
     ok_button.add_event_cb(on_ok, lv.EVENT.CLICKED, None)
-
-    # Animation: move_x
-    ok_button_anim_0001 = lv.anim_t()
-    ok_button_anim_0001.init()
-    ok_button_anim_0001.set_var(ok_button)
-    ok_button_anim_0001.set_time(500)
-    ok_button_anim_0001.set_delay(0)
-    ok_button_anim_0001.set_values(0, 100)
-    ok_button_anim_0001.set_path_cb(lv.anim_t.path_linear)
-    ok_button_anim_0001.set_custom_exec_cb(lambda a, val: ok_button.set_x(val))
-    lv.anim_t.start(ok_button_anim_0001)
-
-    # Create label: title
-    title = lv.label(panel_main)
-    title.set_pos(5, 5)
-    title.set_size(100, 20)
-    title.set_text("Hello")
+    ok_button_anim = lv.anim_t()
+    ok_button_anim.init()
+    ok_button_anim.set_var(ok_button)
+    ok_button_anim.set_values(0, 100)
+    ok_button_anim.set_duration(500)
+    ok_button_anim.set_path_cb(lv.anim_t.path_linear)
+    ok_button_anim.set_custom_exec_cb(lambda _anim, value: ok_button.set_x(value))
+    ok_button_anim.start()
 
 
-def demo___co_load_page(page_index):
+def demo_co_load_page(page_index):
     """
     Load a specific page by index
 
@@ -238,12 +246,12 @@ def demo___co_load_page(page_index):
 
         # Create the page based on index
         if page_index == 0:
-            demo___co_create_main(screens[0])
+            demo_co_create_main(screens[0])
 
     lv.screen_load(screens[page_index])
     current_screen = page_index
 
-def demo___co_load_page_anim(page_index, anim, time_ms, delay_ms):
+def demo_co_load_page_anim(page_index, anim, time_ms, delay_ms):
     """Load page with animation"""
     global screens, current_screen
 
@@ -254,16 +262,16 @@ def demo___co_load_page_anim(page_index, anim, time_ms, delay_ms):
         screens[page_index] = lv.obj()
 
         if page_index == 0:
-            demo___co_create_main(screens[0])
+            demo_co_create_main(screens[0])
 
     lv.screen_load_anim(screens[page_index], anim, time_ms, delay_ms, False)
     current_screen = page_index
 
-def demo___co_get_current_page():
+def demo_co_get_current_page():
     """Get current page index"""
     return current_screen
 
-def demo___co_init():
+def demo_co_init():
     """
     Initialize all screens and show the first page
     """
@@ -274,10 +282,10 @@ def demo___co_init():
     current_screen = 0
 
     # Load first page
-    demo___co_load_page(0)
+    demo_co_load_page(0)
 
 # Example usage:
-# demo___co_init()
-# demo___co_load_page(1)  # Switch to page 1
+# demo_co_init()
+# demo_co_load_page(1)  # Switch to page 1
 "
 `;

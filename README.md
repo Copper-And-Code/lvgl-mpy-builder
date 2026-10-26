@@ -25,8 +25,10 @@ This demonstrates how AI-assisted development can enable developers to build sop
 - **Media**: Image, Image Button
 
 ### 📤 Code Generation
-- **C Generator**: Generates optimized C code for LVGL
-- **MicroPython Generator**: Generates compatible MicroPython code
+- **C Generator**: targets **LVGL 9.6** and uses no deprecated API (it also builds with `LV_DISABLE_API_MAPPING`, ready for LVGL 10)
+- **MicroPython Generator**: targets the official **lv_micropython** firmware (MicroPython 1.24.1 with LVGL 9.3)
+- **Verified output**: CI compiles the generated C against the LVGL 9.6 headers and runs the generated MicroPython on the lv_micropython firmware (see `scripts/lvgl-api/README.md`)
+- **Widget handles**: every widget is reachable from application code (`ui_<name>` in C, `objects["<name>"]` in MicroPython)
 - **Customizable Templates**: External template files that can be modified
 - **Export**: Export directly to file or copy to clipboard
 
@@ -121,46 +123,70 @@ npm run dev
 
 ## Generated Code Example
 
-### C
+A page with one button and a click handler (excerpt):
+
+### C (LVGL 9.6)
 ```c
 #include "lvgl.h"
 
-void my_ui_create(lv_obj_t *parent)
+/* Fonts used: enable LV_FONT_MONTSERRAT_16 in lv_conf.h */
+
+/* Widget handles (use `extern lv_obj_t * ui_<name>;` to access them from other files) */
+lv_obj_t * ui_button_1;
+
+static void on_click(lv_event_t *e);
+
+void my_ui_create_main(lv_obj_t *parent)
 {
     if (parent == NULL) {
-        parent = lv_scr_act();
+        parent = lv_screen_active();
     }
 
-    /* Create button: button_1 */
-    lv_obj_t *button_1 = lv_btn_create(parent);
-    lv_obj_set_pos(button_1, 100, 50);
-    lv_obj_set_size(button_1, 120, 40);
-    lv_obj_set_style_bg_color(button_1, lv_color_make(33, 150, 243), LV_PART_MAIN);
-
-    lv_obj_t *button_1_label = lv_label_create(button_1);
+    /* button: button_1 */
+    ui_button_1 = lv_button_create(parent);
+    lv_obj_set_pos(ui_button_1, 100, 50);
+    lv_obj_set_size(ui_button_1, 120, 40);
+    lv_obj_set_style_bg_color(ui_button_1, lv_color_hex(0x2196F3), LV_PART_MAIN);
+    lv_obj_set_style_radius(ui_button_1, 5, LV_PART_MAIN);
+    lv_obj_t * button_1_label = lv_label_create(ui_button_1);
     lv_label_set_text(button_1_label, "Click Me");
     lv_obj_center(button_1_label);
+    lv_obj_set_style_text_color(button_1_label, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+    lv_obj_set_style_text_font(button_1_label, &lv_font_montserrat_16, LV_PART_MAIN);
+    lv_obj_add_event_cb(ui_button_1, on_click, LV_EVENT_CLICKED, NULL);
 }
 ```
 
-### MicroPython
+### MicroPython (lv_micropython)
 ```python
 import lvgl as lv
 
-def my_ui_create(parent=None):
-    if parent is None:
-        parent = lv.scr_act()
+# Created widgets, by name (e.g. objects["ok_button"])
+objects = {}
 
-    # Create button: button_1
-    button_1 = lv.btn(parent)
+def my_ui_create_main(parent=None):
+    if parent is None:
+        parent = lv.screen_active()
+
+    # button: button_1
+    button_1 = lv.button(parent)
+    objects["button_1"] = button_1
     button_1.set_pos(100, 50)
     button_1.set_size(120, 40)
-    button_1.set_style_bg_color(lv.color_make(0x21, 0x96, 0xF3), lv.PART.MAIN)
-
+    button_1.set_style_bg_color(lv.color_hex(0x2196F3), lv.PART.MAIN)
+    button_1.set_style_radius(5, lv.PART.MAIN)
     button_1_label = lv.label(button_1)
     button_1_label.set_text("Click Me")
     button_1_label.center()
+    button_1_label.set_style_text_color(lv.color_hex(0xFFFFFF), lv.PART.MAIN)
+    button_1_label.set_style_text_font(lv.font_montserrat_16, lv.PART.MAIN)
+    button_1.add_event_cb(on_click, lv.EVENT.CLICKED, None)
 ```
+
+Notes on the targets:
+- LVGL 9.6 deprecates `lv_list`, `lv_win` and `lv_menu`: the generator builds these widgets from base widgets in a flex column, as LVGL recommends.
+- `lv.spinner` is not exported by the lv_micropython binding: in MicroPython the spinner is an arc rotated by an endless animation.
+- The default lv_micropython firmware includes the Montserrat fonts 14, 16 and 24 only: MicroPython font sizes are mapped to the closest of these.
 
 ## Roadmap
 

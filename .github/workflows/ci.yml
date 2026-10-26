@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  LVGL_VERSION: v9.6.0
+  # lv_micropython unix firmware used to run the generated MicroPython code
+  # (MicroPython 1.24.1 + LVGL 9.3.0, see scripts/lvgl-api/README.md)
+  LV_MICROPYTHON_COMMIT: 44aa2b153dd3aa1ba183d05bd867fe3ffe2a1d75
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # Install scripts are skipped: tests do not need the Electron binary
+      - run: npm ci --ignore-scripts
+      - run: npm run lint
+      - run: npm test
+      - run: npx vite build
+
+  generated-code:
+    name: Generated code (gcc + lv_micropython)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config libffi-dev python3
+
+      - name: Fetch LVGL ${{ env.LVGL_VERSION }}
+        run: git clone --depth 1 --branch "$LVGL_VERSION" https://github.com/lvgl/lvgl.git "$RUNNER_TEMP/lvgl"
+
+      - name: Cache lv_micropython firmware
+        id: firmware-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/micropython-lvgl
+          key: lv-micropython-unix-${{ env.LV_MICROPYTHON_COMMIT }}
+
+      - name: Build lv_micropython (unix port, lvgl variant)
+        if: steps.firmware-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          src="$RUNNER_TEMP/lv_micropython"
+          git init -q "$src"
+          git -C "$src" fetch -q --depth 1 https://github.com/lvgl/lv_micropython.git "$LV_MICROPYTHON_COMMIT"
+          git -C "$src" checkout -q FETCH_HEAD
+          git -C "$src" submodule update --init --depth 1 \
+            user_modules/lv_binding_micropython lib/micropython-lib lib/berkeley-db-1.xx lib/mbedtls
+          git -C "$src/user_modules/lv_binding_micropython" submodule update --init --depth 1 lvgl pycparser
+          make -C "$src/mpy-cross" -j"$(nproc)"
+          make -C "$src/ports/unix" VARIANT=lvgl -j"$(nproc)"
+          cp "$src/ports/unix/build-lvgl/micropython" "$RUNNER_TEMP/micropython-lvgl"
+
+      - name: Compile the generated C and run the generated MicroPython
+        env:
+          LVGL_96_DIR: ${{ runner.temp }}/lvgl
+          MICROPYTHON_LVGL: ${{ runner.temp }}/micropython-lvgl
+          REQUIRE_TOOLCHAIN: '1'
+        run: npx vitest run tests/toolchain.test.js

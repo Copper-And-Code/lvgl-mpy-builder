@@ -1,26 +1,15 @@
 // Template Loader for Code Generation
 // Loads external template files that can be customized by users
 // Supports multi-architecture templates (unix, stm32, esp32, rp2040, nrf52, etc.)
-// Updated for LVGL 9.3
+// C templates target LVGL 9.6, MicroPython templates the lv_micropython binding (LVGL 9.3)
 
 import HandlebarsBase from 'handlebars';
+import { indentText } from './indent';
+
+export { indentText };
 
 // Isolated Handlebars environment for code generation
 const Handlebars = HandlebarsBase.create();
-
-/**
- * Re-indent multi-line text: every line after the first is prefixed with
- * `spaces` spaces, so user code placed inside a block keeps a valid
- * indentation (required by Python, cosmetic in C).
- */
-export function indentText(text, spaces) {
-  const pad = ' '.repeat(Number.isInteger(spaces) ? spaces : 0);
-  return String(text ?? '')
-    .replace(/\r\n?/g, '\n')
-    .split('\n')
-    .map((line, i) => (i === 0 || line.trim() === '' ? line.trimEnd() : pad + line))
-    .join('\n');
-}
 
 Handlebars.registerHelper('indent', (text, spaces) => indentText(text, spaces));
 
@@ -42,18 +31,23 @@ export const ARCHITECTURES = {
 export const DEFAULT_ARCHITECTURE = ARCHITECTURES.STM32;
 
 // Default templates (fallback if external files are not available)
-// Updated for LVGL 9.3 API
+// C templates target LVGL 9.6, MicroPython templates the lv_micropython binding (LVGL 9.3) API
 const defaultTemplates = {
   c: `/*
- * Auto-generated LVGL 9.3 UI Code
+ * Auto-generated LVGL UI Code
  * Project: {{projectName}}
  * Generated: {{generatedDate}}
  * Display Size: {{canvasWidth}}x{{canvasHeight}}
  *
- * LVGL Version: 9.3
+ * LVGL Version: 9.6 (no deprecated APIs)
  */
 
 #include "lvgl.h"
+
+{{#if declarations}}
+{{declarations}}
+
+{{/if}}
 
 {{#if hasEventCallbacks}}
 /* Event callback declarations */
@@ -79,10 +73,9 @@ static void {{this.name}}(lv_event_t *e)
 {
     lv_event_code_t code = lv_event_get_code(e);
     lv_obj_t *obj = lv_event_get_target_obj(e);
+    LV_UNUSED(obj);
 
-    if (code == {{this.type}}) {
-        {{indent this.code 8}}
-    }
+    {{indent this.body 4}}
 }
 
 {{/each}}
@@ -96,15 +89,20 @@ void {{functionName}}_init(void)
 `,
 
   micropython: `"""
-Auto-generated LVGL 9.3 UI Code for MicroPython
+Auto-generated LVGL UI Code for MicroPython
 Project: {{projectName}}
 Generated: {{generatedDate}}
 Display Size: {{canvasWidth}}x{{canvasHeight}}
 
-LVGL Version: 9.3
+LVGL Version: 9.3 (lv_micropython binding)
 """
 
 import lvgl as lv
+
+{{#if declarations}}
+{{declarations}}
+
+{{/if}}
 
 {{#if hasEventCallbacks}}
 {{#each eventCallbacks}}
@@ -112,9 +110,7 @@ def {{this.name}}(e):
     code = e.get_code()
     obj = e.get_target_obj()
 
-    if code == lv.EVENT.{{this.eventType}}:
-        {{indent this.code 8}}
-        pass
+    {{indent this.body 4}}
 
 {{/each}}
 {{/if}}
@@ -133,15 +129,20 @@ def {{functionName}}_init():
 `,
 
   c_multipage: `/*
- * Auto-generated LVGL 9.3 UI Code (Multi-Page)
+ * Auto-generated LVGL UI Code (Multi-Page)
  * Project: {{projectName}}
  * Generated: {{generatedDate}}
  * Pages: {{pageCount}}
  *
- * LVGL Version: 9.3
+ * LVGL Version: 9.6 (no deprecated APIs)
  */
 
 #include "lvgl.h"
+
+{{#if declarations}}
+{{declarations}}
+
+{{/if}}
 
 {{#if hasEventCallbacks}}
 {{#each eventCallbacks}}
@@ -171,10 +172,9 @@ static void {{this.name}}(lv_event_t *e)
 {
     lv_event_code_t code = lv_event_get_code(e);
     lv_obj_t *obj = lv_event_get_target_obj(e);
+    LV_UNUSED(obj);
 
-    if (code == {{this.type}}) {
-        {{indent this.code 8}}
-    }
+    {{indent this.body 4}}
 }
 
 {{/each}}
@@ -238,15 +238,20 @@ void {{baseName}}_init(void)
 `,
 
   micropython_multipage: `"""
-Auto-generated LVGL 9.3 UI Code for MicroPython (Multi-Page)
+Auto-generated LVGL UI Code for MicroPython (Multi-Page)
 Project: {{projectName}}
 Generated: {{generatedDate}}
 Pages: {{pageCount}}
 
-LVGL Version: 9.3
+LVGL Version: 9.3 (lv_micropython binding)
 """
 
 import lvgl as lv
+
+{{#if declarations}}
+{{declarations}}
+
+{{/if}}
 
 {{#if hasEventCallbacks}}
 {{#each eventCallbacks}}
@@ -254,9 +259,7 @@ def {{this.name}}(e):
     code = e.get_code()
     obj = e.get_target_obj()
 
-    if code == lv.EVENT.{{this.eventType}}:
-        {{indent this.code 8}}
-        pass
+    {{indent this.body 4}}
 
 {{/each}}
 {{/if}}

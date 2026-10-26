@@ -1,17 +1,22 @@
 /*
- * Auto-generated LVGL 9.3 UI Code for STM32 (Multi-Page)
+ * Auto-generated LVGL UI Code for STM32 (Multi-Page)
  * Project: {{projectName}}
  * Generated: {{generatedDate}}
  * Pages: {{pageCount}}
  * Target: STM32 with LVGL
  *
- * LVGL Version: 9.3
+ * LVGL Version: 9.6 (no deprecated APIs)
  *
  * This is a customizable template file for multi-page STM32 projects.
  */
 
 #include "lvgl.h"
 #include "main.h"  // STM32 HAL includes
+
+{{#if declarations}}
+{{declarations}}
+
+{{/if}}
 
 {{#if hasEventCallbacks}}
 /* Event callback declarations */
@@ -49,10 +54,9 @@ static void {{this.name}}(lv_event_t *e)
 {
     lv_event_code_t code = lv_event_get_code(e);
     lv_obj_t *obj = lv_event_get_target_obj(e);
+    LV_UNUSED(obj);
 
-    if (code == {{this.type}}) {
-        {{indent this.code 8}}
-    }
+    {{indent this.body 4}}
 }
 
 {{/each}}
