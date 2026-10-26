@@ -1,4 +1,6 @@
 // Test projects for the code generators.
+import fs from 'node:fs';
+import path from 'node:path';
 import { createWidget, widgetDefinitions } from '../../src/core/widgetDefinitions';
 
 const widget = (type, id, name, props = {}, extra = {}) => ({
@@ -11,6 +13,9 @@ const widget = (type, id, name, props = {}, extra = {}) => ({
 export const PNG_DATA_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAEklEQVR4nGP4z8DwHxtmoJ4EAFeLL9Fq2vKHAAAAAElFTkSuQmCC';
 export const JPEG_DATA_URL = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAAAAAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAFAAgDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEBAAAAAAAAAAAAAAAAAAAAB//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AJ8Awip//9k=';
 const GIF_DATA_URL = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+// DejaVu Sans with ASCII and Latin-1 only (see fonts/LICENSE.txt)
+export const FONT_NAME = 'DejaVuSans-Latin1.ttf';
+export const FONT_DATA_URL = `data:font/ttf;base64,${fs.readFileSync(path.join(__dirname, 'fonts', FONT_NAME)).toString('base64')}`;
 
 // Event code that is valid both in C and (as a comment) in MicroPython
 const COMMENT_CODE = '// handled by the application';
@@ -18,12 +23,14 @@ const COMMENT_CODE = '// handled by the application';
 /** Every widget type with defaults plus options that exercise each code path. */
 export function allWidgetsProject() {
   const overrides = {
-    label: { longMode: 'LV_LABEL_LONG_MODE_DOTS', textAlign: 'LV_TEXT_ALIGN_RIGHT', recolor: true, fontSize: 18 },
+    label: { longMode: 'LV_LABEL_LONG_MODE_DOTS', textAlign: 'LV_TEXT_ALIGN_RIGHT', recolor: true, fontSize: 18, font: FONT_NAME },
+    // Custom fonts: the button also at the size of its custom style; "▶" is not in the font
+    button: { text: 'Avvia ▶ è', font: FONT_NAME },
+    dropdown: { selected: 1, dir: 'LV_DIR_TOP', font: 'broken.ttf' },
     slider: { mode: 'range', leftValue: 10, value: 0 },
     switch: { checked: true, disabled: true },
     checkbox: { checked: true },
     textarea: { oneLine: true, password: true, maxLength: 20, acceptedChars: '0123456789', text: 'abc' },
-    dropdown: { selected: 1, dir: 'LV_DIR_TOP' },
     roller: { infinite: true, selected: 2 },
     spinbox: { separatorPos: 2, step: 5, rollover: true },
     keyboard: { mode: 'number', popover: false },
@@ -43,7 +50,7 @@ export function allWidgetsProject() {
     msgbox: { closeButton: true },
     buttonmatrix: { oneCheck: true },
     line: { rounded: true },
-    span: { mode: 'clip' },
+    span: { mode: 'clip', font: FONT_NAME },
   };
 
   const widgets = Object.keys(widgetDefinitions).map((type, index) =>
@@ -68,19 +75,37 @@ export function allWidgetsProject() {
     id: `anim_${i}`, type, duration: 300, delay: i * 10, repeat: i % 2, playback: i % 2 === 0,
     startValue: 0, endValue: 100, path: 'lv_anim_path_ease_in_out',
   }));
+  // Data binding: variables "level" and "enabled"
+  const bind = (type, variableId, extra = {}) => {
+    widgets.find((w) => w.type === type).binding = { variableId, ...extra };
+  };
+  bind('slider', 'v-level');
+  bind('arc', 'v-level');
+  bind('roller', 'v-level');
+  bind('label', 'v-level', { format: 'Level: %d' });
+  bind('switch', 'v-enabled');
+  bind('checkbox', 'v-enabled');
+
   const slider = widgets.find((w) => w.type === 'slider');
   slider.events = [{ id: 'e3', type: 'LV_EVENT_VALUE_CHANGED', callback: 'on_value', code: COMMENT_CODE }];
 
   return {
     projectName: 'All Widgets',
     pages: [{ id: 'p1', name: 'Widgets', canvasSize: { width: 800, height: 480 }, widgets }],
+    variables: [
+      { id: 'v-level', name: 'level', initial: 3 },
+      { id: 'v-enabled', name: 'enabled', initial: 1 },
+    ],
     assets: {
       images: [
         { id: 'a1', name: 'logo.png', data: PNG_DATA_URL },
         { id: 'a2', name: 'photo.jpg', data: JPEG_DATA_URL },
         { id: 'a3', name: 'anim.gif', data: GIF_DATA_URL },
       ],
-      fonts: [],
+      fonts: [
+        { id: 'f1', name: FONT_NAME, data: FONT_DATA_URL, characters: '°' },
+        { id: 'f2', name: 'broken.ttf', data: 'data:font/ttf;base64,AAAA' },
+      ],
     },
   };
 }

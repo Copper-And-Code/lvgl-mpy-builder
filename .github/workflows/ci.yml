@@ -66,8 +66,10 @@ jobs:
         id: firmware-cache
         uses: actions/cache@v4
         with:
-          path: ${{ runner.temp }}/micropython-lvgl
-          key: lv-micropython-unix-${{ env.LV_MICROPYTHON_COMMIT }}
+          path: |
+            ${{ runner.temp }}/micropython-lvgl
+            ${{ runner.temp }}/micropython-lvgl-binfont
+          key: lv-micropython-unix-binfont-${{ env.LV_MICROPYTHON_COMMIT }}
 
       - name: Build lv_micropython (unix port, lvgl variant)
         if: steps.firmware-cache.outputs.cache-hit != 'true'
@@ -83,10 +85,17 @@ jobs:
           make -C "$src/mpy-cross" -j"$(nproc)"
           make -C "$src/ports/unix" VARIANT=lvgl -j"$(nproc)"
           cp "$src/ports/unix/build-lvgl/micropython" "$RUNNER_TEMP/micropython-lvgl"
+          # Second build with the binary font loader used by custom fonts (see the README)
+          sed -i 's#\$(LVGL_DIR)/lvgl_private.h |#-include $(LVGL_DIR)/lvgl.h $(LVGL_DIR)/lvgl_private.h |#' \
+            "$src/user_modules/lv_binding_micropython/micropython.mk"
+          rm -rf "$src/ports/unix/build-lvgl"
+          make -C "$src/ports/unix" VARIANT=lvgl -j"$(nproc)"
+          cp "$src/ports/unix/build-lvgl/micropython" "$RUNNER_TEMP/micropython-lvgl-binfont"
 
       - name: Compile the generated C and run the generated MicroPython
         env:
           LVGL_96_DIR: ${{ runner.temp }}/lvgl
           MICROPYTHON_LVGL: ${{ runner.temp }}/micropython-lvgl
+          MICROPYTHON_LVGL_BINFONT: ${{ runner.temp }}/micropython-lvgl-binfont
           REQUIRE_TOOLCHAIN: '1'
         run: npx vitest run tests/toolchain.test.js

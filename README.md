@@ -29,6 +29,7 @@ This demonstrates how AI-assisted development can enable developers to build sop
 - **MicroPython Generator**: targets the official **lv_micropython** firmware (MicroPython 1.24.1 with LVGL 9.3)
 - **Verified output**: CI compiles the generated C against the LVGL 9.6 headers and runs the generated MicroPython on the lv_micropython firmware (see `scripts/lvgl-api/README.md`)
 - **Widget handles**: every widget is reachable from application code (`ui_<name>` in C, `objects["<name>"]` in MicroPython)
+- **Data binding**: project variables (LVGL observer subjects) bound to widget values, see [Data Binding](#data-binding)
 - **Customizable Templates**: External template files that can be modified
 - **Export**: Export directly to file or copy to clipboard
 
@@ -197,7 +198,38 @@ def my_ui_create_main(parent=None):
 Notes on the targets:
 - LVGL 9.6 deprecates `lv_list`, `lv_win` and `lv_menu`: the generator builds these widgets from base widgets in a flex column, as LVGL recommends.
 - `lv.spinner` is not exported by the lv_micropython binding: in MicroPython the spinner is an arc rotated by an endless animation.
-- The default lv_micropython firmware includes the Montserrat fonts 14, 16 and 24 only: MicroPython font sizes are mapped to the closest of these.
+- The default lv_micropython firmware includes the Montserrat fonts 14, 16 and 24 only: MicroPython font sizes are mapped to the closest of these. Fonts uploaded in the Asset Manager are converted for both targets (see [Custom Fonts](#custom-fonts)).
+
+## Data Binding
+
+Variables are integer values shared by the UI and the application, generated as LVGL observer *subjects*:
+
+1. Click **Variables** in the toolbar and add a variable (name and initial value).
+2. Select a slider, arc, dropdown, roller, switch, checkbox or label and choose the variable under **Data binding** in the Properties panel (labels also take a printf format, e.g. `Speed %d km/h`).
+3. The canvas shows the initial value; the generated code keeps the widgets and the variable in sync in both directions.
+
+| | C (LVGL 9.6) | MicroPython (lv_micropython) |
+|---|---|---|
+| Variable | `lv_subject_t * var_speed;` created by `<project>_variables_init()` with `lv_subject_create()` (called by the page functions) | `var_speed = lv.subject_t()` + `init_int()` at import |
+| Read / write | `lv_subject_get_int(var_speed)` / `lv_subject_set_int(var_speed, 42)` | `var_speed.get_int()` / `var_speed.set_int(42)` |
+| Binding | `lv_slider_bind_value()`, `lv_label_bind_text()`, `lv_obj_bind_checked()`, … | `slider.bind_value()`, `label.bind_text()`, `switch.bind_checked()`, … |
+
+Only bindings available in both targets are offered (LVGL 9.6 deprecates the `lv_subject_init_*` functions, which the MicroPython firmware still uses).
+
+## Custom Fonts
+
+1. Upload a TTF, OTF or WOFF font in **Assets → Fonts**. The card shows a sample of the font.
+2. Select a widget with a **Font Size** and choose the font under **Font** in the Properties panel. The canvas draws the text with it.
+3. On export, the editor converts the font with [lv_font_conv](https://github.com/lvgl/lv_font_conv), the converter LVGL uses for its own fonts: one font for each size used (widget size, Style Editor size, span sizes), 4 bpp, uncompressed.
+
+Each converted font contains printable ASCII plus the characters of the widgets using it. Characters set at run time by the application (e.g. `°` or `€`) go in the **Extra characters** field of the font card. A comment in the generated code lists the characters the font does not have.
+
+| | C (LVGL 9.6) | MicroPython (lv_micropython) |
+|---|---|---|
+| Font | `const lv_font_t font_<name>_<size>` embedded in the generated file | LVGL binary font embedded in base64, loaded with `lv.binfont_create_from_buffer()` |
+| Requirements | none | a firmware that exports `binfont_create_from_buffer` (see below); otherwise the nearest Montserrat font is used |
+
+The default lv_micropython firmware does not export the binary font loader, because its binding is generated from `lvgl_private.h` only. To export it, change the preprocessing line in `user_modules/lv_binding_micropython/micropython.mk` from `$(LVGL_DIR)/lvgl_private.h | ...` to `-include $(LVGL_DIR)/lvgl.h $(LVGL_DIR)/lvgl_private.h | ...`, then rebuild the firmware (CI builds and tests both variants). Compressed binary fonts crash LVGL 9.3 when drawn, so the editor always generates uncompressed fonts.
 
 ## Roadmap
 

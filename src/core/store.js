@@ -14,6 +14,7 @@ import {
   withUniqueNames,
 } from './projectModel';
 import { DEFAULT_CANVAS_SIZE, validateComponents, validateProject } from './projectValidation';
+import { isBindable } from './bindings';
 
 // Consecutive edits with the same key within this time are one undo step
 // (typing in a field, dragging a color picker)
@@ -37,6 +38,7 @@ const initialProject = () => {
     currentPageId: page.id,
     assets: { images: [], fonts: [] },
     componentLibrary: [],
+    variables: [], // { id, name, initial }: integer LVGL subjects for data binding
     selectedWidgetId: null,
     history: {},
   };
@@ -343,6 +345,72 @@ const useStore = create((set, get) => ({
     return copy.id;
   },
 
+  /**
+   * Bind a widget to a variable ({ variableId, format? }) or remove the
+   * binding (null). Only bindable widget types accept a binding.
+   */
+  setWidgetBinding: (id, binding) =>
+    set((state) =>
+      editWidgets(
+        state,
+        (widgets) => {
+          const widget = findWidget(widgets, id);
+          // Nothing to change: no new undo step
+          if (!widget || (binding ? !isBindable(widget.type) : !widget.binding)) return widgets;
+          return mapWidget(widgets, id, (w) => {
+            if (!binding) {
+              const { binding: _removed, ...rest } = w;
+              return rest;
+            }
+            return { ...w, binding: { ...binding } };
+          });
+        },
+        `binding:${id}`
+      )
+    ),
+
+  // -------------------------------------------------------------------------
+  // Variables (data binding)
+
+  /** Add an integer variable; returns its id. */
+  addVariable: (name = 'value', initial = 0) => {
+    const id = uuidv4();
+    set((state) => ({
+      variables: [...state.variables, { id, name: uniqueName(name, state.variables), initial: Math.round(Number(initial) || 0) }],
+    }));
+    return id;
+  },
+
+  updateVariable: (id, changes) =>
+    set((state) => ({
+      variables: state.variables.map((variable) => {
+        if (variable.id !== id) return variable;
+        const next = { ...variable };
+        if (changes.name !== undefined) {
+          next.name = uniqueName(changes.name, state.variables.filter((v) => v.id !== id)) || variable.name;
+        }
+        if (changes.initial !== undefined) next.initial = Math.round(Number(changes.initial) || 0);
+        return next;
+      }),
+    })),
+
+  /** Delete a variable and the bindings that use it, on every page. */
+  deleteVariable: (id) =>
+    set((state) => ({
+      variables: state.variables.filter((variable) => variable.id !== id),
+      pages: state.pages.map((page) => {
+        if (!page.widgets.some((widget) => widget.binding?.variableId === id)) return page;
+        return {
+          ...page,
+          widgets: page.widgets.map((widget) => {
+            if (widget.binding?.variableId !== id) return widget;
+            const { binding: _removed, ...rest } = widget;
+            return rest;
+          }),
+        };
+      }),
+    })),
+
   // -------------------------------------------------------------------------
   // Assets
 
@@ -352,6 +420,15 @@ const useStore = create((set, get) => ({
       assets: {
         ...state.assets,
         [type]: [...state.assets[type], { ...asset, id: uuidv4(), name: uniqueName(asset.name, state.assets[type]) }],
+      },
+    })),
+
+  /** Change editable fields of an asset (e.g. the extra characters of a font). */
+  updateAsset: (type, assetId, changes) =>
+    set((state) => ({
+      assets: {
+        ...state.assets,
+        [type]: state.assets[type].map((asset) => (asset.id === assetId ? { ...asset, ...changes, id: asset.id, name: asset.name } : asset)),
       },
     })),
 
@@ -440,6 +517,7 @@ const useStore = create((set, get) => ({
       currentPageId: state.currentPageId,
       assets: state.assets,
       componentLibrary: state.componentLibrary,
+      variables: state.variables,
       targetArchitecture: state.targetArchitecture,
       version: '4.0.0',
       createdAt: new Date().toISOString(),

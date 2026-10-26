@@ -1,0 +1,102 @@
+name: Upstream LVGL check
+
+# Weekly early warning for new LVGL releases and lv_micropython updates: the
+# generated code is compiled and run against the latest versions, and the API
+# reference data (tests/fixtures) is regenerated. The job fails when the
+# generated code breaks or when the API changed (the summary lists what).
+on:
+  schedule:
+    - cron: '17 5 * * 1' # Mondays
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  latest:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config libffi-dev python3
+
+      - name: Find the latest versions
+        id: versions
+        run: |
+          set -euo pipefail
+          lvgl=$(git ls-remote --tags https://github.com/lvgl/lvgl.git 'v*' | awk '{print $2}' | sed 's#refs/tags/##' \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+          mpy=$(git ls-remote https://github.com/lvgl/lv_micropython.git HEAD | cut -f1)
+          pinned_mpy=$(grep -oE 'LV_MICROPYTHON_COMMIT: [0-9a-f]+' .github/workflows/ci.yml | cut -d' ' -f2)
+          pinned_lvgl=$(grep -oE 'LVGL_VERSION: v[0-9.]+' .github/workflows/ci.yml | cut -d' ' -f2)
+          echo "lvgl=$lvgl" >> "$GITHUB_OUTPUT"
+          echo "mpy=$mpy" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Upstream versions"
+            echo "| | pinned in CI | latest |"
+            echo "|---|---|---|"
+            echo "| LVGL | $pinned_lvgl | $lvgl |"
+            echo "| lv_micropython | \`${pinned_mpy:0:12}\` | \`${mpy:0:12}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fetch LVGL ${{ steps.versions.outputs.lvgl }}
+        run: git clone --depth 1 --branch "${{ steps.versions.outputs.lvgl }}" https://github.com/lvgl/lvgl.git "$RUNNER_TEMP/lvgl"
+
+      - name: Build lv_micropython ${{ steps.versions.outputs.mpy }}
+        run: |
+          set -euo pipefail
+          src="$RUNNER_TEMP/lv_micropython"
+          git init -q "$src"
+          git -C "$src" fetch -q --depth 1 https://github.com/lvgl/lv_micropython.git "${{ steps.versions.outputs.mpy }}"
+          git -C "$src" checkout -q FETCH_HEAD
+          git -C "$src" submodule update --init --depth 1 \
+            user_modules/lv_binding_micropython lib/micropython-lib lib/berkeley-db-1.xx lib/mbedtls
+          git -C "$src/user_modules/lv_binding_micropython" submodule update --init --depth 1 lvgl pycparser
+          make -C "$src/mpy-cross" -j"$(nproc)"
+          make -C "$src/ports/unix" VARIANT=lvgl -j"$(nproc)"
+          # Second build with the binary font loader used by custom fonts (see the README)
+          cp -r "$src/ports/unix/build-lvgl" "$RUNNER_TEMP/build-lvgl-default"
+          sed -i 's#\$(LVGL_DIR)/lvgl_private.h |#-include $(LVGL_DIR)/lvgl.h $(LVGL_DIR)/lvgl_private.h |#' \
+            "$src/user_modules/lv_binding_micropython/micropython.mk"
+          rm -rf "$src/ports/unix/build-lvgl"
+          make -C "$src/ports/unix" VARIANT=lvgl -j"$(nproc)"
+          mv "$src/ports/unix/build-lvgl" "$RUNNER_TEMP/build-lvgl-binfont"
+          mv "$RUNNER_TEMP/build-lvgl-default" "$src/ports/unix/build-lvgl"
+
+      - name: Compile and run the generated code on the latest versions
+        env:
+          LVGL_96_DIR: ${{ runner.temp }}/lvgl
+          MICROPYTHON_LVGL: ${{ runner.temp }}/lv_micropython/ports/unix/build-lvgl/micropython
+          MICROPYTHON_LVGL_BINFONT: ${{ runner.temp }}/build-lvgl-binfont/micropython
+          REQUIRE_TOOLCHAIN: '1'
+        run: npx vitest run tests/toolchain.test.js
+
+      - name: Compare the API reference data
+        if: always()
+        run: |
+          set -euo pipefail
+          src="$RUNNER_TEMP/lv_micropython"
+          label=$(echo "${{ steps.versions.outputs.lvgl }}" | sed -E 's/^v([0-9]+)\.([0-9]+).*/lvgl-\1.\2/')
+          python3 scripts/lvgl-api/extract_c_symbols.py tests/fixtures/lvgl-c-symbols.json "$label=$RUNNER_TEMP/lvgl"
+          lvgl_version=$(grep -E '#define LVGL_VERSION_(MAJOR|MINOR|PATCH)' "$src/user_modules/lv_binding_micropython/lvgl/lv_version.h" | awk '{print $3}' | paste -sd.)
+          python3 scripts/lvgl-api/extract_micropython_api.py \
+            "$src/ports/unix/build-lvgl/lvgl/lv_mpy.json" "$src/ports/unix/build-lvgl/lvgl/lv_mpy.c" \
+            tests/fixtures/lvgl-micropython-api.json --lvgl-version "$lvgl_version" \
+            --binding-commit "$(git -C "$src/user_modules/lv_binding_micropython" rev-parse HEAD)"
+          {
+            echo "### API reference data"
+            echo "lv_micropython ships LVGL $lvgl_version."
+            echo '```'
+            git diff --stat -- tests/fixtures/lvgl-c-symbols.json tests/fixtures/lvgl-micropython-api.json || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          # Run the unit tests on the new data: they list every generated name that changed
+          npm test
+          git diff --quiet -- tests/fixtures/lvgl-c-symbols.json tests/fixtures/lvgl-micropython-api.json || {
+            echo "::warning::The LVGL API changed upstream: update the pinned versions and the fixtures (see scripts/lvgl-api/README.md)"
+            exit 1
+          }

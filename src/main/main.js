@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { readTemplate, writeTemplate, isCustomized, resetTemplate } = require('./templateStore');
 const { renderTemplate, checkTemplate } = require('./templateRenderer');
+const { cachedConvertFont } = require('./fontConverter');
 
 // Configure Electron flags for better Linux compatibility
 if (process.platform === 'linux') {
@@ -372,3 +373,6 @@ ipcMain.handle('write-template', async (event, architecture, templateName, conte
 ipcMain.handle('reset-template', async (event, architecture, templateName) => {
   return resetTemplate(app.getPath('userData'), architecture, templateName);
 });
+
+// Custom fonts of the Asset Manager, converted with lv_font_conv
+ipcMain.handle('convert-font', async (event, request) => cachedConvertFont(request));

@@ -44,8 +44,11 @@ export const v = {
   enum: (enumName, member) => ({ k: 'enum', enumName, member }),
   /** Style selector: part plus optional state, e.g. sel('INDICATOR', 'CHECKED') */
   sel: (part = 'MAIN', state = null) => ({ k: 'sel', part, state }),
-  /** Font size; the emitter maps it to an available Montserrat font */
-  font: (size) => ({ k: 'font', size: toInt(size, 14) }),
+  /**
+   * Font: a custom font converted from the Asset Manager (`symbol`, see
+   * fonts.js) or, without one, the Montserrat font nearest to `size`
+   */
+  font: (size, symbol = null) => ({ k: 'font', size: toInt(size, 14), symbol }),
   /** Reference to an identifier declared by the generated code */
   ref: (name) => ({ k: 'ref', name }),
   null: () => ({ k: 'null' }),

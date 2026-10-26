@@ -16,6 +16,7 @@ import { functionOwner } from '../src/generators/core/emit';
 import { SUPPORTED_WIDGET_TYPES } from '../src/generators/core/widgets';
 import { clearTemplateCache } from '../src/generators/templateLoader';
 import { readTemplate } from '../src/main/templateStore';
+import { convertFont } from '../src/main/fontConverter';
 import path from 'node:path';
 
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -23,13 +24,17 @@ const C_SYMBOLS = new Set(cSymbolsFixture.symbols);
 const C_DEPRECATED = new Set(cSymbolsFixture.deprecated);
 const PROJECTS = { 'all widgets': allWidgetsProject, hostile: hostileProject };
 const ARCHITECTURES = ['unix', 'stm32', 'esp32'];
-const STRUCT_TYPES = { anim: 'anim_t', style: 'style_t', span: 'span_t', event: 'event_t' };
+const STRUCT_TYPES = { anim: 'anim_t', style: 'style_t', span: 'span_t', event: 'event_t', subject: 'subject_t' };
 const CTYPE_CLASSES = {
   'lv_obj_t *': 'obj',
   'lv_chart_series_t *': 'chart_series_t',
   'lv_span_t *': 'span_t',
   'lv_style_t *': 'style_t',
 };
+
+// LVGL 9.3 functions that the lv_micropython binding exports only when built
+// from lvgl.h too (see README): lv_binfont_create_from_buffer loads custom fonts
+const OPTIONAL_MPY_FUNCTIONS = ['binfont_create_from_buffer'];
 
 const methodsOf = (cls) =>
   new Set([...(mpyApi.classes[cls] ? mpyApi.classes.obj.methods : []), ...(mpyApi.classes[cls]?.methods ?? []), ...(mpyApi.structs[cls] ?? [])]);
@@ -46,6 +51,7 @@ function useBundledTemplates() {
   vi.stubGlobal('window', {
     electronAPI: {
       readTemplate: async (architecture, name) => readTemplate({ bundledDir: REPO_ROOT }, architecture, name),
+      convertFont,
     },
   });
 }
@@ -77,12 +83,16 @@ describe.each(Object.entries(PROJECTS))('%s project', (_label, makeProject) => {
     });
 
     it('MicroPython uses only names exported by the lv_micropython binding', async () => {
-      const code = stripLiteralsAndComments(await generateMicroPythonCode(makeProject(), architecture), 'py');
+      const source = await generateMicroPythonCode(makeProject(), architecture);
+      const code = stripLiteralsAndComments(source, 'py');
       const problems = [];
+      // Functions missing from the default firmware, used only after checking hasattr(lv, ...)
+      const optional = new Set([...source.matchAll(/hasattr\(lv, "([a-z_0-9]+)"\)/g)].map((match) => match[1]));
+      expect([...optional].filter((name) => !OPTIONAL_MPY_FUNCTIONS.includes(name))).toEqual([]);
 
       for (const [, name] of code.matchAll(/\blv\.([a-z_0-9]+)\b(?!\.)/g)) {
         const known = mpyApi.classes[name] || mpyApi.module.functions.includes(name) ||
-          mpyApi.structs[name] || mpyApi.module.blobs.includes(name);
+          mpyApi.structs[name] || mpyApi.module.blobs.includes(name) || optional.has(name);
         if (!known) problems.push(`lv.${name}`);
       }
       for (const [, constant] of code.matchAll(/\blv\.([A-Z][A-Z_0-9]*)\b(?!\.)/g)) {
@@ -97,6 +107,9 @@ describe.each(Object.entries(PROJECTS))('%s project', (_label, makeProject) => {
       }
       for (const [, struct, method] of code.matchAll(/\blv\.([a-z_]+_t)\.([a-z_0-9]+)\b/g)) {
         if (!mpyApi.structs[struct]?.includes(method)) problems.push(`lv.${struct}.${method}`);
+      }
+      for (const [, method] of code.matchAll(/\bvar_[a-z0-9_]+\.([a-z_]+)\(/g)) {
+        if (!mpyApi.structs.subject_t.includes(method)) problems.push(`subject_t.${method}`);
       }
       for (const [, method] of code.matchAll(/\be\.([a-z_]+)\(/g)) {
         if (!mpyApi.structs.event_t.includes(method)) problems.push(`event_t.${method}`);

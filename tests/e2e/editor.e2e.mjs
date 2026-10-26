@@ -185,6 +185,37 @@ describe('LVGL editor (Electron)', () => {
     await page.click('.modal-close');
   });
 
+  it('converts an uploaded font for the generated code', async () => {
+    await page.click('button:has-text("Assets")');
+    await page.click('.asset-manager .tab-button:has-text("Fonts")');
+    await page.locator('.asset-manager input[type="file"]').setInputFiles(path.join(ROOT, 'tests/fixtures/fonts/DejaVuSans-Latin1.ttf'));
+    // The preview shows a sample in the font, loaded in the renderer
+    await page.locator('.asset-manager .font-sample').waitFor();
+    await page.locator('.asset-manager input[aria-label^="Extra characters"]').fill('°');
+    await page.click('.asset-manager .btn-close');
+
+    await page.click('button[title^="Add Label ("]');
+    await property('Text').fill('Città 21°');
+    await page
+      .locator('.properties-list .property-field', { has: page.locator('label:text-is("Font")') })
+      .locator('select')
+      .selectOption('DejaVuSans-Latin1.ttf');
+
+    await page.click('button:has-text("Export Code")');
+    await page.locator('.export-controls select').first().selectOption('c');
+    const code = page.locator('.code-preview code');
+    await code.filter({ hasText: 'const lv_font_t font_dejavusans_latin1_14' }).waitFor();
+    const c = await code.textContent();
+    assert.match(c, /lv_obj_set_style_text_font\(ui_\w+, &font_dejavusans_latin1_14, LV_PART_MAIN\);/);
+    assert.match(c, /U\+00E0 "à"/, 'characters of the label text');
+    assert.doesNotMatch(c, /not converted/);
+
+    await page.locator('.export-controls select').first().selectOption('micropython');
+    await code.filter({ hasText: 'binfont_create_from_buffer' }).waitFor();
+    assert.match(await code.textContent(), /\.set_style_text_font\(font_dejavusans_latin1_14, lv\.PART\.MAIN\)/);
+    await page.click('.modal-close');
+  });
+
   it('shows the experimental features only when enabled in Settings', async () => {
     const toggles = ['.cloud-sync-toggle', '.collaboration-toggle', '.plugin-manager-toggle'];
     for (const toggle of toggles) assert.equal(await page.locator(toggle).count(), 0, `${toggle} hidden by default`);
@@ -204,6 +235,30 @@ describe('LVGL editor (Electron)', () => {
     await cloudSync.uncheck();
     await page.click('.settings-dialog .modal-close');
     assert.equal(await page.locator('.cloud-sync-toggle').count(), 0);
+  });
+
+  it('binds a slider and a label to a variable', async () => {
+    await page.click('button:has-text("Variables")');
+    await page.click('.variables-dialog button:has-text("Add variable")');
+    await page.locator('.variables-dialog input[aria-label="Variable name"]').fill('speed');
+    await page.locator('.variables-dialog input[aria-label="Initial value"]').fill('30');
+    await page.click('.variables-dialog .modal-close');
+
+    await page.click('button[title^="Add Slider ("]');
+    await page.locator('select[aria-label="Bound variable"]').selectOption({ label: 'speed' });
+    await page.click('button[title^="Add Label ("]');
+    await page.locator('select[aria-label="Bound variable"]').selectOption({ label: 'speed' });
+    await page.locator('input[aria-label="Text format"]').fill('Speed %d km/h');
+
+    await page.click('button:has-text("Export Code")');
+    await page.locator('.export-controls select').first().selectOption('c');
+    const code = page.locator('.code-preview code');
+    await code.filter({ hasText: 'lv_slider_bind_value' }).waitFor();
+    const text = await code.textContent();
+    assert.match(text, /var_speed = lv_subject_create\(LV_SUBJECT_TYPE_INT\);/);
+    assert.match(text, /lv_subject_set_int\(var_speed, 30\);/);
+    assert.match(text, /lv_label_bind_text\(ui_\w+, var_speed, "Speed %d km\/h"\);/);
+    await page.click('.modal-close');
   });
 
   it('forbids eval in the renderer (Content Security Policy)', async () => {

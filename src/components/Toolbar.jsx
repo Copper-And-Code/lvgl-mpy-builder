@@ -6,6 +6,7 @@ import CodeExportModal from './CodeExportModal';
 import TemplateSelector from './TemplateSelector';
 import AssetManager from './AssetManager';
 import SettingsDialog from './SettingsDialog';
+import VariablesDialog from './VariablesDialog';
 
 const Toolbar = () => {
   const canvasSize = useStore(selectCanvasSize);
@@ -51,6 +52,7 @@ const Toolbar = () => {
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [showAssetManager, setShowAssetManager] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showVariables, setShowVariables] = useState(false);
   // Width/height being typed; reset when the page size changes (preset, page switch, load)
   const [sizeInputs, setSizeInputs] = useState({ width: canvasSize.width, height: canvasSize.height, for: canvasSize });
   if (sizeInputs.for !== canvasSize) {
@@ -269,6 +271,9 @@ const Toolbar = () => {
           >
             Assets
           </button>
+          <button className="toolbar-btn" onClick={() => setShowVariables(true)} title="Variables for data binding">
+            Variables
+          </button>
           <button className="toolbar-btn" onClick={() => setShowSettings(true)} title="Editor settings">
             Settings
           </button>
@@ -289,6 +294,7 @@ const Toolbar = () => {
       {showTemplateSelector && <TemplateSelector onClose={() => setShowTemplateSelector(false)} />}
       {showAssetManager && <AssetManager onClose={() => setShowAssetManager(false)} />}
       {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
+      {showVariables && <VariablesDialog onClose={() => setShowVariables(false)} />}
     </>
   );
 };

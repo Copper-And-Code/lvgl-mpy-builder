@@ -3,10 +3,14 @@
 
 import { buildProjectCode } from './core/project';
 import { commentText } from './core/emit';
+import { convertFonts } from './core/fonts';
 import { renderTemplate, DEFAULT_ARCHITECTURE } from './templateLoader';
 
 export async function generateCode(projectData, language, architecture = DEFAULT_ARCHITECTURE) {
-  const project = buildProjectCode(projectData, language);
+  // First pass: the custom fonts used, converted before the final pass
+  const { fontRequests } = buildProjectCode(projectData, language);
+  const fonts = fontRequests.length ? await convertFonts(fontRequests, language) : undefined;
+  const project = buildProjectCode(projectData, language, { fonts });
   return renderTemplate(language, architecture, {
     projectName: commentText(projectData.projectName || 'Untitled'),
     generatedDate: new Date().toISOString(),

@@ -5,6 +5,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { widgetDefinitions } from './widgetDefinitions';
 import { uniqueName } from './projectModel';
+import { isBindable } from './bindings';
 
 export const DEFAULT_CANVAS_SIZE = { width: 1024, height: 600 };
 
@@ -54,6 +55,9 @@ export function validateWidgets(widgets, usedIds, warnings, where) {
       events: Array.isArray(raw.events) ? raw.events.filter(isObject) : [],
       animations: Array.isArray(raw.animations) ? raw.animations.filter(isObject) : [],
       customStyles: isObject(raw.customStyles) ? raw.customStyles : {},
+      ...(isObject(raw.binding) && typeof raw.binding.variableId === 'string' && isBindable(raw.type)
+        ? { binding: { variableId: raw.binding.variableId, ...(typeof raw.binding.format === 'string' ? { format: raw.binding.format } : {}) } }
+        : {}),
     });
   });
 
@@ -120,6 +124,17 @@ export function validateProject(data) {
   });
   if (pages.length === 0) throw new Error('Unsupported project file: no valid pages found');
 
+  const variables = validateVariables(data.variables, warnings);
+  const variableIds = new Set(variables.map((variable) => variable.id));
+  pages.forEach((page) => {
+    page.widgets.forEach((widget) => {
+      if (widget.binding && !variableIds.has(widget.binding.variableId)) {
+        warnings.push(`Page "${page.name}": widget "${widget.name}" was bound to a missing variable; the binding was removed`);
+        delete widget.binding;
+      }
+    });
+  });
+
   const currentPageId = pages.some((page) => page.id === data.currentPageId) ? data.currentPageId : pages[0].id;
   const assets = isObject(data.assets) ? data.assets : {};
 
@@ -134,9 +149,28 @@ export function validateProject(data) {
         fonts: Array.isArray(assets.fonts) ? assets.fonts.filter(isObject) : [],
       },
       componentLibrary: validateComponents(data.componentLibrary, warnings),
+      variables,
     },
     warnings,
   };
+}
+
+/** Integer variables (LVGL subjects) with unique ids and names. */
+function validateVariables(variables, warnings) {
+  if (!Array.isArray(variables)) return [];
+  const ids = new Set();
+  const valid = [];
+  variables.filter(isObject).forEach((raw, index) => {
+    let id = typeof raw.id === 'string' && raw.id ? raw.id : uuidv4();
+    if (ids.has(id)) id = uuidv4();
+    ids.add(id);
+    const base = typeof raw.name === 'string' && raw.name.trim() ? raw.name.trim() : `value_${index + 1}`;
+    const name = uniqueName(base, valid);
+    if (name !== base) warnings.push(`Duplicate variable name "${base}" was renamed to "${name}"`);
+    const initial = Number.isFinite(Number(raw.initial)) ? Math.round(Number(raw.initial)) : 0;
+    valid.push({ id, name, initial });
+  });
+  return valid;
 }
 
 /** Validate the saved components of a library (project or imported file). */
