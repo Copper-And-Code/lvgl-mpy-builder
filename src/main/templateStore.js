@@ -44,6 +44,18 @@ function readTemplate({ userDir, bundledDir }, architecture, templateName) {
   return null;
 }
 
+/** Whether the user has a customized copy of the template. */
+function isCustomized(userDir, architecture, templateName) {
+  return fs.existsSync(resolveTemplatePath(userDir, architecture, templateName));
+}
+
+/** Delete the user's copy, so the bundled (or built-in) template is used again. */
+function resetTemplate(userDir, architecture, templateName) {
+  const filePath = resolveTemplatePath(userDir, architecture, templateName);
+  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  return true;
+}
+
 /**
  * Save a customized template under the user's data directory.
  */
@@ -67,4 +79,6 @@ module.exports = {
   resolveTemplatePath,
   readTemplate,
   writeTemplate,
+  isCustomized,
+  resetTemplate,
 };

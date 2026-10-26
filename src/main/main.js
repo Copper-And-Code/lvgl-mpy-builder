@@ -1,7 +1,8 @@
 const { app, BrowserWindow, ipcMain, dialog, session, Menu, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { readTemplate, writeTemplate } = require('./templateStore');
+const { readTemplate, writeTemplate, isCustomized, resetTemplate } = require('./templateStore');
+const { renderTemplate, checkTemplate } = require('./templateRenderer');
 
 // Configure Electron flags for better Linux compatibility
 if (process.platform === 'linux') {
@@ -46,9 +47,8 @@ function setupContentSecurityPolicy() {
         ].join('; ')
       : [
           "default-src 'self'",
-          // 'unsafe-eval' is still required by Handlebars.compile() for
-          // runtime templates; remove it once templates are precompiled
-          "script-src 'self' 'unsafe-eval'",
+          // No eval: code templates are rendered in the main process
+          "script-src 'self'",
           "style-src 'self' 'unsafe-inline'",
           "img-src 'self' data: blob:",
           "font-src 'self' data:",
@@ -345,15 +345,30 @@ ipcMain.handle('export-code', async (event, { code, filename, language }) => {
   }
 });
 
-// IPC Handlers for code-generation templates (whitelisted names only)
+// IPC Handlers for code-generation templates (whitelisted names only).
+// Templates are rendered here: compiling them needs eval, which the
+// renderer's Content Security Policy forbids.
+const templateDirs = () => ({ userDir: app.getPath('userData'), bundledDir: app.getAppPath() });
+
 ipcMain.handle('read-template', async (event, architecture, templateName) => {
-  return readTemplate(
-    { userDir: app.getPath('userData'), bundledDir: app.getAppPath() },
-    architecture,
-    templateName
-  );
+  return readTemplate(templateDirs(), architecture, templateName);
+});
+
+ipcMain.handle('get-template', async (event, architecture, templateName) => ({
+  source: readTemplate(templateDirs(), architecture, templateName),
+  customized: isCustomized(app.getPath('userData'), architecture, templateName),
+}));
+
+ipcMain.handle('render-template', async (event, architecture, templateName, data, builtinSource) => {
+  const source = readTemplate(templateDirs(), architecture, templateName) ?? builtinSource;
+  return renderTemplate(source, data);
 });
 
 ipcMain.handle('write-template', async (event, architecture, templateName, content) => {
+  checkTemplate(content);
   return writeTemplate(app.getPath('userData'), architecture, templateName, content);
+});
+
+ipcMain.handle('reset-template', async (event, architecture, templateName) => {
+  return resetTemplate(app.getPath('userData'), architecture, templateName);
 });

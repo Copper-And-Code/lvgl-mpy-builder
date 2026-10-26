@@ -1,0 +1,66 @@
+.template-editor-overlay {
+  z-index: 3000;
+}
+
+.template-editor {
+  width: min(960px, 94vw);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.template-editor .modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  flex: 1;
+}
+
+.template-editor-badge {
+  margin-left: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #fff3e0;
+  color: #e65100;
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+.template-editor-help,
+.template-editor-note {
+  margin: 0;
+  font-size: 12px;
+  color: #555555;
+  line-height: 1.5;
+}
+
+.template-editor-help code {
+  background: #f1f1f1;
+  padding: 0 3px;
+  border-radius: 3px;
+}
+
+.template-editor-source {
+  flex: 1;
+  min-height: 360px;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 13px;
+  line-height: 1.45;
+  padding: 10px;
+  border: 1px solid #cccccc;
+  border-radius: 4px;
+  resize: vertical;
+  white-space: pre;
+  tab-size: 4;
+}
+
+.template-editor-error {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: #ffebee;
+  color: #b71c1c;
+  font-size: 13px;
+  white-space: pre-wrap;
+}

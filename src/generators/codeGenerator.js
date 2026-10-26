@@ -3,12 +3,11 @@
 
 import { buildProjectCode } from './core/project';
 import { commentText } from './core/emit';
-import { loadTemplate, DEFAULT_ARCHITECTURE } from './templateLoader';
+import { renderTemplate, DEFAULT_ARCHITECTURE } from './templateLoader';
 
 export async function generateCode(projectData, language, architecture = DEFAULT_ARCHITECTURE) {
   const project = buildProjectCode(projectData, language);
-  const template = await loadTemplate(language, architecture);
-  return template({
+  return renderTemplate(language, architecture, {
     projectName: commentText(projectData.projectName || 'Untitled'),
     generatedDate: new Date().toISOString(),
     hasEventCallbacks: project.eventCallbacks.length > 0,

@@ -5,6 +5,7 @@ import { generateCCode } from '../generators/cGenerator';
 import { generateMicroPythonCode } from '../generators/micropythonGenerator';
 import { getAvailableArchitectures } from '../generators/templateLoader';
 import { notify } from '../core/dialogs';
+import TemplateEditor from './TemplateEditor';
 
 const CodeExportModal = ({ onClose }) => {
   const { getProjectData, targetArchitecture, setTargetArchitecture } = useStore(
@@ -18,29 +19,36 @@ const CodeExportModal = ({ onClose }) => {
   const [architecture, setArchitecture] = useState(targetArchitecture);
   const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [editingTemplate, setEditingTemplate] = useState(false);
+  const [templateVersion, setTemplateVersion] = useState(0); // regenerate after template edits
 
   // Snapshot of the project when the dialog opens
   const projectData = useMemo(() => getProjectData(), [getProjectData]);
   const availableArchitectures = useMemo(() => getAvailableArchitectures(), []);
 
   useEffect(() => {
+    // Ignore results of a previous language/architecture choice
+    let current = true;
     const generateCode = async () => {
       setIsLoading(true);
       try {
         const generatedCode = language === 'c'
           ? await generateCCode(projectData, architecture)
           : await generateMicroPythonCode(projectData, architecture);
-        setCode(generatedCode);
+        if (current) setCode(generatedCode);
       } catch (error) {
         console.error('Error generating code:', error);
-        setCode(`// Error generating code: ${error.message}`);
+        if (current) setCode(`// Error generating code: ${error.message}`);
       } finally {
-        setIsLoading(false);
+        if (current) setIsLoading(false);
       }
     };
 
     generateCode();
-  }, [language, architecture, projectData]);
+    return () => {
+      current = false;
+    };
+  }, [language, architecture, projectData, templateVersion]);
 
   // Update store when architecture changes
   useEffect(() => {
@@ -114,6 +122,9 @@ const CodeExportModal = ({ onClose }) => {
             </label>
 
             <div className="export-actions">
+              <button className="btn-secondary" onClick={() => setEditingTemplate(true)} title="Customize the code template">
+                ✏️ Edit Template
+              </button>
               <button className="btn-secondary" onClick={handleCopy} disabled={isLoading}>
                 📋 Copy to Clipboard
               </button>
@@ -142,6 +153,15 @@ const CodeExportModal = ({ onClose }) => {
           </button>
         </div>
       </div>
+      {editingTemplate && (
+        <TemplateEditor
+          language={language}
+          architecture={architecture}
+          architectureName={availableArchitectures.find((arch) => arch.id === architecture)?.name ?? architecture}
+          onClose={() => setEditingTemplate(false)}
+          onChange={() => setTemplateVersion((version) => version + 1)}
+        />
+      )}
     </div>
   );
 };

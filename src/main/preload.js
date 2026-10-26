@@ -33,6 +33,12 @@ contextBridge.exposeInMainWorld('electron', {
 contextBridge.exposeInMainWorld('electronAPI', {
   readTemplate: (architecture, templateName) =>
     ipcRenderer.invoke('read-template', architecture, templateName),
+  getTemplate: (architecture, templateName) =>
+    ipcRenderer.invoke('get-template', architecture, templateName),
+  renderTemplate: (architecture, templateName, data, builtinSource) =>
+    ipcRenderer.invoke('render-template', architecture, templateName, data, builtinSource),
   writeTemplate: (architecture, templateName, content) =>
     ipcRenderer.invoke('write-template', architecture, templateName, content),
+  resetTemplate: (architecture, templateName) =>
+    ipcRenderer.invoke('reset-template', architecture, templateName),
 });

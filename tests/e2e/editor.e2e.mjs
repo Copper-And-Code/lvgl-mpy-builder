@@ -2,6 +2,8 @@
 // Run with `npm run test:e2e` (on Linux without a display: xvfb-run -a npm run test:e2e).
 
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
@@ -13,6 +15,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 
 let app;
 let page;
+// Customized templates are saved in the user data folder: use a temporary one
+const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lvgl-editor-e2e-'));
 const problems = [];
 
 const hierarchy = () =>
@@ -33,7 +37,7 @@ describe('LVGL editor (Electron)', () => {
   before(async () => {
     app = await electron.launch({
       executablePath: require('electron'),
-      args: [ROOT, ...(process.getuid?.() === 0 ? ['--no-sandbox'] : [])],
+      args: [ROOT, `--user-data-dir=${userDataDir}`, ...(process.getuid?.() === 0 ? ['--no-sandbox'] : [])],
     });
     page = await app.firstWindow();
     page.on('console', (message) => {
@@ -45,6 +49,7 @@ describe('LVGL editor (Electron)', () => {
 
   after(async () => {
     await app?.close();
+    fs.rmSync(userDataDir, { recursive: true, force: true });
   });
 
   it('nests a widget and keeps it inside its parent on the canvas', async () => {
@@ -113,8 +118,53 @@ describe('LVGL editor (Electron)', () => {
     await code.filter({ hasText: 'lv_label_create' }).waitFor();
     const text = await code.textContent();
     assert.match(text, /title_label/);
-    assert.match(text, /lv_obj_create\(parent\)|lv_obj_create\(/);
+    assert.match(text, /lv_obj_create\(/);
+  });
+
+  it('customizes, validates and resets the code template', async () => {
+    const code = page.locator('.code-preview code');
+    await page.click('button:has-text("Edit Template")');
+    const editor = page.locator('.template-editor');
+    const source = editor.locator('textarea');
+    await source.waitFor();
+    const original = await source.inputValue();
+
+    // A broken template is rejected with the Handlebars error
+    await source.fill(original + '\n{{#if pages}} unclosed');
+    await editor.locator('button:has-text("Save")').click();
+    await editor.locator('.template-editor-error').waitFor();
+    assert.match(await editor.locator('.template-editor-error').textContent(), /Template error/);
+
+    // A valid change is saved and used by the preview
+    await source.fill('/* CUSTOM TEMPLATE MARK */\n' + original);
+    await editor.locator('button:has-text("Save")').click();
+    await editor.locator('.template-editor-badge').waitFor();
+    await code.filter({ hasText: 'CUSTOM TEMPLATE MARK' }).waitFor();
+    assert.ok(fs.readdirSync(path.join(userDataDir, 'templates')).length > 0, 'saved in the user data folder');
+
+    // Reset restores the bundled template
+    await editor.locator('button:has-text("Reset to bundled")').click();
+    await dialog().locator('button:has-text("Reset")').click();
+    await code.filter({ hasNotText: 'CUSTOM TEMPLATE MARK' }).filter({ hasText: 'lv_label_create' }).waitFor();
+    await editor.locator('button:has-text("Close")').click();
     await page.click('.modal-close');
+  });
+
+  it('forbids eval in the renderer (Content Security Policy)', async () => {
+    // page.evaluate() itself is not subject to the CSP: use a string timer,
+    // which the page evaluates
+    const result = await page.evaluate(
+      () =>
+        new Promise((resolve) => {
+          document.addEventListener('securitypolicyviolation', (e) => resolve(`blocked by ${e.violatedDirective}`), { once: true });
+          setTimeout('window.__evalAllowed = true', 0);
+          setTimeout(() => resolve(window.__evalAllowed ? 'allowed' : 'not run'), 500);
+        })
+    );
+    assert.equal(result, 'blocked by script-src');
+    // The browser logs the blocked attempt: not an application error
+    const expected = problems.filter((problem) => /Refused to evaluate|unsafe-eval/.test(problem));
+    expected.forEach((problem) => problems.splice(problems.indexOf(problem), 1));
   });
 
   it('logs no errors or warnings', () => {

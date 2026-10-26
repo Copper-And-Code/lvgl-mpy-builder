@@ -282,55 +282,49 @@ export function clearTemplateCache() {
 }
 
 /**
- * Get template source code for editing
+ * Render a code template with `data`. In Electron the main process renders
+ * it (compiling templates needs eval, which the renderer's CSP forbids);
+ * elsewhere (browser during development, tests) it is compiled here.
+ */
+export async function renderTemplate(templateName, architecture = DEFAULT_ARCHITECTURE, data = {}) {
+  const api = getElectronAPI();
+  if (api?.renderTemplate) {
+    return api.renderTemplate(architecture, templateName, data, defaultTemplates[templateName]);
+  }
+  const template = await loadTemplate(templateName, architecture);
+  return template(data);
+}
+
+/**
+ * Template source for the template editor.
+ * @returns {Promise<{ source: string, customized: boolean, editable: boolean }>}
  */
 export async function getTemplateSource(templateName, architecture = DEFAULT_ARCHITECTURE) {
-  try {
-    const api = getElectronAPI();
-    if (api?.readTemplate) {
-      const source = await api.readTemplate(architecture, templateName);
-      if (source) return source;
-    }
-  } catch (error) {
-    // File doesn't exist or can't be read
+  const api = getElectronAPI();
+  if (api?.getTemplate) {
+    const { source, customized } = await api.getTemplate(architecture, templateName);
+    return { source: source ?? defaultTemplates[templateName] ?? '', customized, editable: true };
   }
-
-  return defaultTemplates[templateName] || '';
+  return { source: defaultTemplates[templateName] ?? '', customized: false, editable: false };
 }
 
 /**
- * Save template source code
+ * Save a customized template (desktop app only).
+ * @throws {Error} if the template does not compile or cannot be saved
  */
 export async function saveTemplateSource(templateName, architecture = DEFAULT_ARCHITECTURE, source) {
-  try {
-    const api = getElectronAPI();
-    if (api?.writeTemplate) {
-      await api.writeTemplate(architecture, templateName, source);
-
-      // Clear cache to force reload
-      const cacheKey = `${architecture}_${templateName}`;
-      delete templateCache[cacheKey];
-
-      return true;
-    }
-  } catch (error) {
-    console.error(`Could not save template ${templateName} for ${architecture}:`, error);
-    return false;
-  }
-
-  return false;
+  const api = getElectronAPI();
+  if (!api?.writeTemplate) throw new Error('Templates can be customized in the desktop app');
+  await api.writeTemplate(architecture, templateName, source);
+  delete templateCache[`${architecture}_${templateName}`];
 }
 
-/**
- * Reset template to default
- */
+/** Remove the customized copy: the bundled template is used again. */
 export async function resetTemplate(templateName, architecture = DEFAULT_ARCHITECTURE) {
-  const defaultSource = defaultTemplates[templateName];
-  if (!defaultSource) {
-    return false;
-  }
-
-  return await saveTemplateSource(templateName, architecture, defaultSource);
+  const api = getElectronAPI();
+  if (!api?.resetTemplate) throw new Error('Templates can be customized in the desktop app');
+  await api.resetTemplate(architecture, templateName);
+  delete templateCache[`${architecture}_${templateName}`];
 }
 
 /**
@@ -386,6 +380,7 @@ export function isArchitectureSupported(architecture) {
 export default {
   loadTemplate,
   clearTemplateCache,
+  renderTemplate,
   getTemplateSource,
   saveTemplateSource,
   resetTemplate,

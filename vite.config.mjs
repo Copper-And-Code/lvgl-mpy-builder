@@ -7,11 +7,11 @@ const src = (dir = '') => fileURLToPath(new URL(`./src/${dir}`, import.meta.url)
 // Production Content Security Policy. Electron loads the build from file://,
 // where the response-header CSP set in main.js is not applied, so the policy
 // is also embedded in index.html (build only: the dev server needs inline
-// scripts for React Fast Refresh).
-// 'unsafe-eval' is still required by Handlebars.compile() for runtime templates.
+// scripts for React Fast Refresh). No 'unsafe-eval': code templates are
+// rendered by the Electron main process.
 const PRODUCTION_CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-eval'",
+  "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
