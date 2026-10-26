@@ -2,12 +2,100 @@ import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import { createWidget } from './widgetDefinitions';
 import { DEFAULT_ARCHITECTURE } from '../generators/templateLoader';
+import {
+  absolutePosition,
+  canReparent,
+  cloneWithNewIds,
+  contentOrigin,
+  descendantIds,
+  findWidget,
+  subtree,
+  uniqueName,
+  withUniqueNames,
+} from './projectModel';
+import { DEFAULT_CANVAS_SIZE, validateComponents, validateProject } from './projectValidation';
+
+// Consecutive edits with the same key within this time are one undo step
+// (typing in a field, dragging a color picker)
+export const HISTORY_COALESCE_MS = 1000;
+const MAX_HISTORY = 50;
+
+const newPage = (name, canvasSize = DEFAULT_CANVAS_SIZE) => ({
+  id: `page_${uuidv4()}`,
+  name,
+  widgets: [],
+  canvasSize: { ...canvasSize },
+});
+
+const initialProject = () => {
+  const page = { ...newPage('Main Screen'), id: 'page_1' };
+  return {
+    projectName: 'Untitled Project',
+    projectPath: null,
+    targetArchitecture: DEFAULT_ARCHITECTURE,
+    pages: [page],
+    currentPageId: page.id,
+    assets: { images: [], fonts: [] },
+    componentLibrary: [],
+    selectedWidgetId: null,
+    history: {},
+  };
+};
+
+// ---------------------------------------------------------------------------
+// Selectors: the pages are the only source of truth
+
+export const selectCurrentPage = (state) =>
+  state.pages.find((page) => page.id === state.currentPageId) ?? state.pages[0];
+export const selectWidgets = (state) => selectCurrentPage(state).widgets;
+export const selectCanvasSize = (state) => selectCurrentPage(state).canvasSize;
+export const selectSelectedWidget = (state) =>
+  findWidget(selectWidgets(state), state.selectedWidgetId);
+export const selectCanUndo = (state) => (state.history[state.currentPageId]?.past.length ?? 0) > 0;
+export const selectCanRedo = (state) => (state.history[state.currentPageId]?.future.length ?? 0) > 0;
+
+// ---------------------------------------------------------------------------
+// History: one undo/redo stack per page, holding previous widget arrays
+
+function recordHistory(entry, previousWidgets, key, now) {
+  const history = entry ?? { past: [], future: [], lastKey: null, lastTime: 0 };
+  if (key && history.lastKey === key && now - history.lastTime < HISTORY_COALESCE_MS && history.past.length) {
+    return { ...history, future: [], lastTime: now };
+  }
+  return {
+    past: [...history.past, previousWidgets].slice(-MAX_HISTORY),
+    future: [],
+    lastKey: key ?? null,
+    lastTime: now,
+  };
+}
+
+const replacePage = (pages, pageId, changes) =>
+  pages.map((page) => (page.id === pageId ? { ...page, ...changes } : page));
+
+/**
+ * State changes that replace the widgets of the current page and record the
+ * previous ones in its history. Returns {} when nothing changed.
+ */
+function editWidgets(state, edit, key = null) {
+  const page = selectCurrentPage(state);
+  const widgets = edit(page.widgets);
+  if (!widgets || widgets === page.widgets) return {};
+  return {
+    pages: replacePage(state.pages, page.id, { widgets }),
+    history: { ...state.history, [page.id]: recordHistory(state.history[page.id], page.widgets, key, Date.now()) },
+  };
+}
+
+const mapWidget = (widgets, id, change) => {
+  if (!findWidget(widgets, id)) return widgets;
+  return widgets.map((widget) => (widget.id === id ? change(widget) : widget));
+};
+
+// ---------------------------------------------------------------------------
 
 const useStore = create((set, get) => ({
-  // Project state
-  projectName: 'Untitled Project',
-  projectPath: null,
-  targetArchitecture: DEFAULT_ARCHITECTURE, // v2.3: Target architecture for code generation
+  ...initialProject(),
 
   // Display presets for quick configuration
   displayPresets: [
@@ -22,508 +110,330 @@ const useStore = create((set, get) => ({
     { name: '1920x1080 (Full HD)', width: 1920, height: 1080 },
   ],
 
-  // Multi-page support (v1.2)
-  pages: [
-    {
-      id: 'page_1',
-      name: 'Main Screen',
-      widgets: [],
-      canvasSize: { width: 1024, height: 600 },
-    }
-  ],
-  currentPageId: 'page_1',
-
-  // Assets management (v1.2)
-  assets: {
-    images: [], // { id, name, path, data }
-    fonts: [],  // { id, name, path, size }
-  },
-
-  // Component Library (v2.0)
-  componentLibrary: [], // { id, name, description, widgets, thumbnail, tags, createdAt }
-
-  // Canvas state
-  widgets: [],
-  selectedWidgetId: null,
-  canvasSize: { width: 1024, height: 600 }, // Default LVGL display size (configurable)
+  // Editor state (not part of the project)
   zoom: 1,
   gridEnabled: true,
   snapToGrid: true,
   gridSize: 10,
 
-  // History for undo/redo
-  history: [],
-  historyIndex: -1,
-  maxHistory: 50,
-
-  // Actions
   setProjectName: (name) => set({ projectName: name }),
-
   setProjectPath: (path) => set({ projectPath: path }),
-
   setTargetArchitecture: (architecture) => set({ targetArchitecture: architecture }),
 
-  setCanvasSize: (size) => {
-    set({ canvasSize: size });
-    // Also update current page's canvas size
-    get().savePageWidgets();
-  },
+  setCanvasSize: (size) =>
+    set((state) => ({
+      pages: replacePage(state.pages, state.currentPageId, { canvasSize: { width: size.width, height: size.height } }),
+    })),
 
-  applyDisplayPreset: (preset) => {
-    const size = { width: preset.width, height: preset.height };
-    set({ canvasSize: size });
-    get().savePageWidgets();
-  },
+  applyDisplayPreset: (preset) => get().setCanvasSize(preset),
 
   setZoom: (zoom) => set({ zoom: Math.max(0.25, Math.min(2, zoom)) }),
-
   toggleGrid: () => set((state) => ({ gridEnabled: !state.gridEnabled })),
-
   toggleSnapToGrid: () => set((state) => ({ snapToGrid: !state.snapToGrid })),
 
-  // Widget management
+  // -------------------------------------------------------------------------
+  // Widgets of the current page
+
   addWidget: (type, position) => {
     const id = uuidv4();
-    const newWidget = createWidget(type, id, position);
-
-    set((state) => ({
-      widgets: [...state.widgets, newWidget],
-      selectedWidgetId: id,
-    }));
-
-    get().saveHistory();
+    set((state) => {
+      const widgets = selectWidgets(state);
+      const widget = createWidget(type, id, position);
+      widget.name = uniqueName(widget.name, widgets);
+      return { ...editWidgets(state, () => [...widgets, widget]), selectedWidgetId: id };
+    });
+    return id;
   },
 
-  updateWidget: (id, props) => {
-    set((state) => ({
-      widgets: state.widgets.map((w) =>
-        w.id === id ? { ...w, props: { ...w.props, ...props } } : w
-      ),
-    }));
-    get().saveHistory();
+  /** Change widget props; consecutive edits of the same props are one undo step. */
+  updateWidget: (id, props) =>
+    set((state) =>
+      editWidgets(
+        state,
+        (widgets) => mapWidget(widgets, id, (widget) => ({ ...widget, props: { ...widget.props, ...props } })),
+        `props:${id}:${Object.keys(props).sort().join(',')}`
+      )
+    ),
+
+  /** Move a widget (one undo step per call, e.g. per drag). */
+  moveWidget: (id, x, y) =>
+    set((state) =>
+      editWidgets(state, (widgets) => mapWidget(widgets, id, (widget) => ({ ...widget, props: { ...widget.props, x, y } })))
+    ),
+
+  renameWidget: (id, name) =>
+    set((state) => editWidgets(state, (widgets) => mapWidget(widgets, id, (widget) => ({ ...widget, name })), `name:${id}`)),
+
+  updateWidgetEvents: (id, events) =>
+    set((state) => editWidgets(state, (widgets) => mapWidget(widgets, id, (widget) => ({ ...widget, events })), `events:${id}`)),
+
+  updateWidgetAnimations: (id, animations) =>
+    set((state) =>
+      editWidgets(state, (widgets) => mapWidget(widgets, id, (widget) => ({ ...widget, animations: animations || [] })), `animations:${id}`)
+    ),
+
+  updateWidgetStyles: (id, styles) =>
+    set((state) =>
+      editWidgets(state, (widgets) => mapWidget(widgets, id, (widget) => ({ ...widget, customStyles: styles || {} })), `styles:${id}`)
+    ),
+
+  /**
+   * Change the parent of a widget, keeping it at the same place on the
+   * screen (LVGL child coordinates are relative to the parent's content).
+   * Returns false if the move would create a cycle.
+   */
+  setWidgetParent: (id, parentId) => {
+    const widgets = selectWidgets(get());
+    const widget = findWidget(widgets, id);
+    if (!widget || (widget.parentId ?? null) === (parentId ?? null)) return true;
+    if (!canReparent(widgets, id, parentId)) return false;
+    const position = absolutePosition(widgets, id);
+    const origin = contentOrigin(widgets, parentId);
+    set((state) =>
+      editWidgets(state, (current) =>
+        mapWidget(current, id, (w) => ({
+          ...w,
+          parentId: parentId || null,
+          props: { ...w.props, x: position.x - origin.x, y: position.y - origin.y },
+        }))
+      )
+    );
+    return true;
   },
 
-  updateWidgetEvents: (id, events) => {
-    set((state) => ({
-      widgets: state.widgets.map((w) =>
-        w.id === id ? { ...w, events } : w
-      ),
-    }));
-    get().saveHistory();
-  },
-
-  updateWidgetAnimations: (id, animations) => {
-    set((state) => ({
-      widgets: state.widgets.map((w) =>
-        w.id === id ? { ...w, animations: animations || [] } : w
-      ),
-    }));
-    get().saveHistory();
-  },
-
-  updateWidgetParent: (id, parentId) => {
-    set((state) => ({
-      widgets: state.widgets.map((w) =>
-        w.id === id ? { ...w, parentId: parentId || null } : w
-      ),
-    }));
-    get().saveHistory();
-  },
-
-  updateWidgetStyles: (id, styles) => {
-    set((state) => ({
-      widgets: state.widgets.map((w) =>
-        w.id === id ? { ...w, customStyles: styles || {} } : w
-      ),
-    }));
-    get().saveHistory();
-  },
-
-  deleteWidget: (id) => {
-    set((state) => ({
-      widgets: state.widgets.filter((w) => w.id !== id),
-      selectedWidgetId: state.selectedWidgetId === id ? null : state.selectedWidgetId,
-    }));
-    get().saveHistory();
-  },
+  /** Delete a widget together with its children. */
+  deleteWidget: (id) =>
+    set((state) => {
+      const removed = descendantIds(selectWidgets(state), id);
+      removed.add(id);
+      return {
+        ...editWidgets(state, (widgets) => widgets.filter((widget) => !removed.has(widget.id))),
+        selectedWidgetId: removed.has(state.selectedWidgetId) ? null : state.selectedWidgetId,
+      };
+    }),
 
   selectWidget: (id) => set({ selectedWidgetId: id }),
-
   deselectWidget: () => set({ selectedWidgetId: null }),
 
+  /** Duplicate a widget with its children, next to the original. */
   duplicateWidget: (id) => {
-    const widget = get().widgets.find((w) => w.id === id);
-    if (widget) {
-      const newId = uuidv4();
-      const duplicated = {
-        ...widget,
-        id: newId,
-        name: `${widget.name}_copy`,
-        props: {
-          ...widget.props,
-          x: widget.props.x + 20,
-          y: widget.props.y + 20,
+    const widgets = selectWidgets(get());
+    const original = findWidget(widgets, id);
+    if (!original) return null;
+    const copies = withUniqueNames(cloneWithNewIds(subtree(widgets, id)), widgets, '_copy');
+    // The copied root is the only copy without a parent inside the copied set
+    const root = copies.find((widget) => !widget.parentId);
+    root.parentId = original.parentId ?? null;
+    root.props = { ...root.props, x: (root.props.x ?? 0) + 20, y: (root.props.y ?? 0) + 20 };
+    set((state) => ({ ...editWidgets(state, (current) => [...current, ...copies]), selectedWidgetId: root.id }));
+    return root.id;
+  },
+
+  moveWidgetToFront: (id) =>
+    set((state) =>
+      editWidgets(state, (widgets) => {
+        const widget = findWidget(widgets, id);
+        return widget ? [...widgets.filter((w) => w.id !== id), widget] : widgets;
+      })
+    ),
+
+  moveWidgetToBack: (id) =>
+    set((state) =>
+      editWidgets(state, (widgets) => {
+        const widget = findWidget(widgets, id);
+        return widget ? [widget, ...widgets.filter((w) => w.id !== id)] : widgets;
+      })
+    ),
+
+  /**
+   * Insert copies of `widgets` (a component or a template) as one undo step.
+   * The top-left corner of the top-level widgets is placed at `position`.
+   */
+  insertWidgets: (widgets, position = { x: 50, y: 50 }) => {
+    if (!Array.isArray(widgets) || widgets.length === 0) return null;
+    const current = selectWidgets(get());
+    const copies = withUniqueNames(cloneWithNewIds(widgets), current);
+    const roots = copies.filter((widget) => !widget.parentId);
+    const minX = Math.min(...roots.map((widget) => widget.props.x ?? 0));
+    const minY = Math.min(...roots.map((widget) => widget.props.y ?? 0));
+    roots.forEach((widget) => {
+      widget.props = { ...widget.props, x: (widget.props.x ?? 0) - minX + position.x, y: (widget.props.y ?? 0) - minY + position.y };
+    });
+    set((state) => ({ ...editWidgets(state, (existing) => [...existing, ...copies]), selectedWidgetId: roots[0]?.id ?? null }));
+    return roots[0]?.id ?? null;
+  },
+
+  // -------------------------------------------------------------------------
+  // History of the current page
+
+  undo: () =>
+    set((state) => {
+      const page = selectCurrentPage(state);
+      const history = state.history[page.id];
+      if (!history?.past.length) return {};
+      const previous = history.past[history.past.length - 1];
+      return {
+        pages: replacePage(state.pages, page.id, { widgets: previous }),
+        history: {
+          ...state.history,
+          [page.id]: { past: history.past.slice(0, -1), future: [page.widgets, ...history.future], lastKey: null, lastTime: 0 },
         },
+        selectedWidgetId: findWidget(previous, state.selectedWidgetId) ? state.selectedWidgetId : null,
       };
+    }),
 
-      set((state) => ({
-        widgets: [...state.widgets, duplicated],
-        selectedWidgetId: newId,
-      }));
-
-      get().saveHistory();
-    }
-  },
-
-  moveWidgetToFront: (id) => {
+  redo: () =>
     set((state) => {
-      const widget = state.widgets.find((w) => w.id === id);
-      if (!widget) return state;
-
+      const page = selectCurrentPage(state);
+      const history = state.history[page.id];
+      if (!history?.future.length) return {};
+      const [next, ...future] = history.future;
       return {
-        widgets: [...state.widgets.filter((w) => w.id !== id), widget],
+        pages: replacePage(state.pages, page.id, { widgets: next }),
+        history: {
+          ...state.history,
+          [page.id]: { past: [...history.past, page.widgets], future, lastKey: null, lastTime: 0 },
+        },
+        selectedWidgetId: findWidget(next, state.selectedWidgetId) ? state.selectedWidgetId : null,
       };
-    });
-  },
+    }),
 
-  moveWidgetToBack: (id) => {
-    set((state) => {
-      const widget = state.widgets.find((w) => w.id === id);
-      if (!widget) return state;
+  // -------------------------------------------------------------------------
+  // Pages
 
-      return {
-        widgets: [widget, ...state.widgets.filter((w) => w.id !== id)],
-      };
-    });
-  },
-
-  // History management
-  saveHistory: () => {
-    set((state) => {
-      const newHistory = state.history.slice(0, state.historyIndex + 1);
-      newHistory.push(JSON.stringify(state.widgets));
-
-      if (newHistory.length > state.maxHistory) {
-        newHistory.shift();
-      }
-
-      return {
-        history: newHistory,
-        historyIndex: newHistory.length - 1,
-      };
-    });
-  },
-
-  undo: () => {
-    const state = get();
-    if (state.historyIndex > 0) {
-      const newIndex = state.historyIndex - 1;
-      const widgets = JSON.parse(state.history[newIndex]);
-      set({ widgets, historyIndex: newIndex });
-    }
-  },
-
-  redo: () => {
-    const state = get();
-    if (state.historyIndex < state.history.length - 1) {
-      const newIndex = state.historyIndex + 1;
-      const widgets = JSON.parse(state.history[newIndex]);
-      set({ widgets, historyIndex: newIndex });
-    }
-  },
-
-  // Page management (v1.2)
   addPage: (name) => {
-    const id = `page_${uuidv4()}`;
-    const currentCanvasSize = get().canvasSize;
-    const newPage = {
-      id,
-      name: name || `Page ${get().pages.length + 1}`,
-      widgets: [],
-      canvasSize: { ...currentCanvasSize },
-    };
-
-    set((state) => ({
-      pages: [...state.pages, newPage],
-      currentPageId: id,
-    }));
+    const state = get();
+    const page = newPage(name || `Page ${state.pages.length + 1}`, selectCanvasSize(state));
+    set({ pages: [...state.pages, page], currentPageId: page.id, selectedWidgetId: null });
+    return page.id;
   },
 
+  /** Delete a page; the last page cannot be deleted (returns false). */
   deletePage: (pageId) => {
     const state = get();
-    if (state.pages.length <= 1) {
-      alert('Cannot delete the last page');
-      return;
-    }
-
-    const pageIndex = state.pages.findIndex(p => p.id === pageId);
-    if (pageIndex === -1) return;
-
-    const newPages = state.pages.filter(p => p.id !== pageId);
-    let newCurrentPageId = state.currentPageId;
-
-    if (pageId === state.currentPageId) {
-      newCurrentPageId = pageIndex > 0 ? newPages[pageIndex - 1].id : newPages[0].id;
-    }
-
+    const index = state.pages.findIndex((page) => page.id === pageId);
+    if (index === -1 || state.pages.length <= 1) return false;
+    const pages = state.pages.filter((page) => page.id !== pageId);
+    const currentPageId = pageId === state.currentPageId ? pages[Math.max(index - 1, 0)].id : state.currentPageId;
+    const history = { ...state.history };
+    delete history[pageId];
     set({
-      pages: newPages,
-      currentPageId: newCurrentPageId,
+      pages,
+      currentPageId,
+      history,
+      selectedWidgetId: pageId === state.currentPageId ? null : state.selectedWidgetId,
     });
-
-    get().loadPageWidgets(newCurrentPageId);
+    return true;
   },
 
-  renamePage: (pageId, newName) => {
-    set((state) => ({
-      pages: state.pages.map(p =>
-        p.id === pageId ? { ...p, name: newName } : p
-      ),
-    }));
-  },
+  renamePage: (pageId, name) => set((state) => ({ pages: replacePage(state.pages, pageId, { name }) })),
 
   switchPage: (pageId) => {
-    // Save current page state
-    const currentPage = get().pages.find(p => p.id === get().currentPageId);
-    if (currentPage) {
-      get().savePageWidgets();
-    }
-
-    // Load new page
-    set({ currentPageId: pageId });
-    get().loadPageWidgets(pageId);
-  },
-
-  savePageWidgets: () => {
-    const state = get();
-    set((s) => ({
-      pages: s.pages.map(p =>
-        p.id === state.currentPageId
-          ? { ...p, widgets: state.widgets, canvasSize: state.canvasSize }
-          : p
-      ),
-    }));
-  },
-
-  loadPageWidgets: (pageId) => {
-    const page = get().pages.find(p => p.id === pageId);
-    if (page) {
-      set({
-        widgets: page.widgets || [],
-        canvasSize: page.canvasSize || { width: 800, height: 480 },
-        selectedWidgetId: null,
-      });
-    }
+    if (pageId === get().currentPageId || !get().pages.some((page) => page.id === pageId)) return;
+    set({ currentPageId: pageId, selectedWidgetId: null });
   },
 
   duplicatePage: (pageId) => {
-    const page = get().pages.find(p => p.id === pageId);
-    if (page) {
-      const newId = `page_${uuidv4()}`;
-      const duplicated = {
-        ...page,
-        id: newId,
-        name: `${page.name} (Copy)`,
-        widgets: page.widgets.map(w => ({
-          ...w,
-          id: uuidv4(),
-        })),
-      };
-
-      set((state) => ({
-        pages: [...state.pages, duplicated],
-      }));
-    }
+    const state = get();
+    const page = state.pages.find((p) => p.id === pageId);
+    if (!page) return null;
+    const copy = { ...newPage(`${page.name} (Copy)`, page.canvasSize), widgets: cloneWithNewIds(page.widgets) };
+    const index = state.pages.indexOf(page);
+    set({ pages: [...state.pages.slice(0, index + 1), copy, ...state.pages.slice(index + 1)] });
+    return copy.id;
   },
 
-  // Assets management (v1.2)
-  addAsset: (type, asset) => {
+  // -------------------------------------------------------------------------
+  // Assets
+
+  /** Add an asset; its name is made unique, since widgets refer to images by name. */
+  addAsset: (type, asset) =>
     set((state) => ({
       assets: {
         ...state.assets,
-        [type]: [...state.assets[type], { ...asset, id: uuidv4() }],
+        [type]: [...state.assets[type], { ...asset, id: uuidv4(), name: uniqueName(asset.name, state.assets[type]) }],
       },
-    }));
-  },
+    })),
 
-  removeAsset: (type, assetId) => {
+  removeAsset: (type, assetId) =>
     set((state) => ({
-      assets: {
-        ...state.assets,
-        [type]: state.assets[type].filter(a => a.id !== assetId),
-      },
-    }));
-  },
+      assets: { ...state.assets, [type]: state.assets[type].filter((asset) => asset.id !== assetId) },
+    })),
 
-  getAsset: (type, assetId) => {
-    const assets = get().assets[type];
-    return assets.find(a => a.id === assetId);
-  },
+  getAsset: (type, assetId) => get().assets[type].find((asset) => asset.id === assetId),
 
-  // Component Library management (v2.0)
+  // -------------------------------------------------------------------------
+  // Component library
+
+  /** Save the selected widget and its children as a component; returns its id or null. */
   saveAsComponent: (name, description, tags = []) => {
     const state = get();
-    const selectedWidget = state.widgets.find(w => w.id === state.selectedWidgetId);
-
-    if (!selectedWidget) {
-      alert('Please select a widget to save as component');
-      return;
-    }
-
-    // Get selected widget and all its children
-    const getWidgetWithChildren = (widgetId) => {
-      const widget = state.widgets.find(w => w.id === widgetId);
-      if (!widget) return [];
-
-      const children = state.widgets.filter(w => w.parentId === widgetId);
-      const allWidgets = [widget];
-
-      children.forEach(child => {
-        allWidgets.push(...getWidgetWithChildren(child.id));
-      });
-
-      return allWidgets;
-    };
-
-    const componentWidgets = getWidgetWithChildren(selectedWidget.id);
-
+    const selected = selectSelectedWidget(state);
+    if (!selected) return null;
+    const widgets = subtree(selectWidgets(state), selected.id).map((widget) =>
+      widget.id === selected.id ? { ...widget, parentId: null } : widget
+    );
     const component = {
       id: uuidv4(),
       name: name || `Component ${state.componentLibrary.length + 1}`,
       description: description || '',
-      widgets: componentWidgets,
+      widgets,
       tags: tags || [],
       createdAt: new Date().toISOString(),
     };
-
-    set((state) => ({
-      componentLibrary: [...state.componentLibrary, component],
-    }));
-
+    set({ componentLibrary: [...state.componentLibrary, component] });
     return component.id;
   },
 
-  deleteComponent: (componentId) => {
-    set((state) => ({
-      componentLibrary: state.componentLibrary.filter(c => c.id !== componentId),
-    }));
-  },
+  deleteComponent: (componentId) =>
+    set((state) => ({ componentLibrary: state.componentLibrary.filter((c) => c.id !== componentId) })),
 
   insertComponent: (componentId, position) => {
-    const component = get().componentLibrary.find(c => c.id === componentId);
-    if (!component) return;
+    const component = get().componentLibrary.find((c) => c.id === componentId);
+    return component ? get().insertWidgets(component.widgets, position) : null;
+  },
 
-    // Generate new IDs for all widgets in the component
-    const idMap = new Map();
-    component.widgets.forEach(widget => {
-      idMap.set(widget.id, uuidv4());
-    });
-
-    // Calculate offset based on position
-    const minX = Math.min(...component.widgets.map(w => w.props.x));
-    const minY = Math.min(...component.widgets.map(w => w.props.y));
-    const offsetX = (position?.x || 0) - minX;
-    const offsetY = (position?.y || 0) - minY;
-
-    // Clone widgets with new IDs and adjusted positions
-    const newWidgets = component.widgets.map(widget => {
-      const newId = idMap.get(widget.id);
-      const newParentId = widget.parentId ? idMap.get(widget.parentId) : null;
-
-      return {
-        ...widget,
-        id: newId,
-        parentId: newParentId,
-        name: `${widget.name}_${Date.now()}`,
-        props: {
-          ...widget.props,
-          x: widget.props.x + offsetX,
-          y: widget.props.y + offsetY,
-        },
-      };
-    });
-
+  updateComponent: (componentId, updates) =>
     set((state) => ({
-      widgets: [...state.widgets, ...newWidgets],
-      selectedWidgetId: newWidgets[0].id,
-    }));
+      componentLibrary: state.componentLibrary.map((c) => (c.id === componentId ? { ...c, ...updates } : c)),
+    })),
 
-    get().saveHistory();
-  },
+  exportComponentLibrary: () => ({
+    components: get().componentLibrary,
+    exportedAt: new Date().toISOString(),
+  }),
 
-  updateComponent: (componentId, updates) => {
-    set((state) => ({
-      componentLibrary: state.componentLibrary.map(c =>
-        c.id === componentId ? { ...c, ...updates } : c
-      ),
-    }));
-  },
-
-  exportComponentLibrary: () => {
-    const state = get();
-    return {
-      components: state.componentLibrary,
-      version: '2.0.0',
-      exportedAt: new Date().toISOString(),
-    };
-  },
-
+  /**
+   * Add the components of a library file; returns the validation warnings.
+   * @throws {Error} if the file is not a component library
+   */
   importComponentLibrary: (data) => {
-    if (!data.components || !Array.isArray(data.components)) {
-      alert('Invalid component library format');
-      return;
-    }
-
-    set((state) => ({
-      componentLibrary: [...state.componentLibrary, ...data.components],
-    }));
+    if (!Array.isArray(data?.components)) throw new Error('Invalid component library format');
+    const warnings = [];
+    const components = validateComponents(data.components, warnings).map((component) => ({ ...component, id: uuidv4() }));
+    set((state) => ({ componentLibrary: [...state.componentLibrary, ...components] }));
+    return warnings;
   },
 
-  // Project operations
-  loadProject: (projectData) => {
-    // Support for v2.0+ multi-page format with component library
-    if (projectData.pages) {
-      const firstPage = projectData.pages[0];
-      set({
-        projectName: projectData.projectName || 'Untitled Project',
-        pages: projectData.pages,
-        currentPageId: projectData.currentPageId || firstPage.id,
-        widgets: firstPage.widgets || [],
-        canvasSize: firstPage.canvasSize || { width: 800, height: 480 },
-        assets: projectData.assets || { images: [], fonts: [] },
-        componentLibrary: projectData.componentLibrary || [],
-        selectedWidgetId: null,
-        history: [],
-        historyIndex: -1,
-      });
-    } else {
-      // Legacy v1.1 format
-      set({
-        projectName: projectData.projectName || 'Untitled Project',
-        pages: [{
-          id: 'page_1',
-          name: 'Main Screen',
-          widgets: projectData.widgets || [],
-          canvasSize: projectData.canvasSize || { width: 800, height: 480 },
-        }],
-        currentPageId: 'page_1',
-        widgets: projectData.widgets || [],
-        canvasSize: projectData.canvasSize || { width: 800, height: 480 },
-        assets: { images: [], fonts: [] },
-        componentLibrary: [],
-        selectedWidgetId: null,
-        history: [],
-        historyIndex: -1,
-      });
-    }
-    get().saveHistory();
+  // -------------------------------------------------------------------------
+  // Project
+
+  /**
+   * Load a project file; returns the validation warnings.
+   * @throws {Error} if the file is not a project
+   */
+  loadProject: (data) => {
+    const { project, warnings } = validateProject(data);
+    set({
+      ...initialProject(),
+      ...project,
+      targetArchitecture: project.targetArchitecture ?? get().targetArchitecture,
+    });
+    return warnings;
   },
 
   getProjectData: () => {
     const state = get();
-    // Save current page before export
-    get().savePageWidgets();
-
     return {
       projectName: state.projectName,
       pages: state.pages,
@@ -531,80 +441,46 @@ const useStore = create((set, get) => ({
       assets: state.assets,
       componentLibrary: state.componentLibrary,
       targetArchitecture: state.targetArchitecture,
-      version: '3.0.0',
+      version: '4.0.0',
       createdAt: new Date().toISOString(),
     };
   },
 
-  clearProject: () => {
-    set({
-      projectName: 'Untitled Project',
-      projectPath: null,
-      targetArchitecture: DEFAULT_ARCHITECTURE,
-      pages: [{
-        id: 'page_1',
-        name: 'Main Screen',
-        widgets: [],
-        canvasSize: { width: 1024, height: 600 },
-      }],
-      currentPageId: 'page_1',
-      widgets: [],
-      assets: { images: [], fonts: [] },
-      componentLibrary: [],
-      selectedWidgetId: null,
-      history: [],
-      historyIndex: -1,
-    });
-  },
+  clearProject: () => set(initialProject()),
 
-  // Screen templates (v1.2)
+  // -------------------------------------------------------------------------
+  // Screen templates: replace the widgets of the current page (one undo step)
+
   applyTemplate: (templateName) => {
     const templates = {
-      'blank': {
-        widgets: [],
-      },
-      'dashboard': {
-        widgets: [
-          createWidget('panel', uuidv4(), { x: 10, y: 10 }),
-          createWidget('label', uuidv4(), { x: 30, y: 30 }),
-          createWidget('button', uuidv4(), { x: 10, y: 400 }),
-        ],
-      },
-      'settings': {
-        widgets: [
-          createWidget('label', uuidv4(), { x: 20, y: 20 }),
-          createWidget('switch', uuidv4(), { x: 20, y: 60 }),
-          createWidget('slider', uuidv4(), { x: 20, y: 120 }),
-        ],
-      },
-      'list': {
-        widgets: [
-          createWidget('panel', uuidv4(), { x: 10, y: 10 }),
-          createWidget('panel', uuidv4(), { x: 10, y: 110 }),
-          createWidget('panel', uuidv4(), { x: 10, y: 210 }),
-        ],
-      },
+      blank: [],
+      dashboard: [
+        createWidget('panel', uuidv4(), { x: 10, y: 10 }),
+        createWidget('label', uuidv4(), { x: 30, y: 30 }),
+        createWidget('button', uuidv4(), { x: 10, y: 400 }),
+      ],
+      settings: [
+        createWidget('label', uuidv4(), { x: 20, y: 20 }),
+        createWidget('switch', uuidv4(), { x: 20, y: 60 }),
+        createWidget('slider', uuidv4(), { x: 20, y: 120 }),
+      ],
+      list: [
+        createWidget('panel', uuidv4(), { x: 10, y: 10 }),
+        createWidget('panel', uuidv4(), { x: 10, y: 110 }),
+        createWidget('panel', uuidv4(), { x: 10, y: 210 }),
+      ],
     };
-
-    const template = templates[templateName];
-    if (template) {
-      set({
-        widgets: template.widgets,
-        selectedWidgetId: null,
-      });
-      get().saveHistory();
-      get().savePageWidgets();
-    }
+    const widgets = templates[templateName];
+    if (!widgets) return;
+    set((state) => ({ ...editWidgets(state, () => withUniqueNames(widgets, [])), selectedWidgetId: null }));
   },
 
-  getAvailableTemplates: () => {
-    return [
-      { id: 'blank', name: 'Blank Screen', description: 'Empty canvas' },
-      { id: 'dashboard', name: 'Dashboard', description: 'Panel with title and button' },
-      { id: 'settings', name: 'Settings', description: 'Common settings layout' },
-      { id: 'list', name: 'List View', description: 'Vertical list of panels' },
-    ];
-  },
+  getAvailableTemplates: () => [
+    { id: 'blank', name: 'Blank Screen', description: 'Empty canvas' },
+    { id: 'dashboard', name: 'Dashboard', description: 'Panel with title and button' },
+    { id: 'settings', name: 'Settings', description: 'Common settings layout' },
+    { id: 'list', name: 'List View', description: 'Vertical list of panels' },
+  ],
 }));
 
 export default useStore;

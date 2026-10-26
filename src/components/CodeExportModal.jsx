@@ -1,37 +1,54 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useStore from '../core/store';
 import { generateCCode } from '../generators/cGenerator';
 import { generateMicroPythonCode } from '../generators/micropythonGenerator';
 import { getAvailableArchitectures } from '../generators/templateLoader';
+import { notify } from '../core/dialogs';
+import TemplateEditor from './TemplateEditor';
 
 const CodeExportModal = ({ onClose }) => {
-  const { getProjectData, targetArchitecture, setTargetArchitecture } = useStore();
+  const { getProjectData, targetArchitecture, setTargetArchitecture } = useStore(
+    useShallow((state) => ({
+      getProjectData: state.getProjectData,
+      targetArchitecture: state.targetArchitecture,
+      setTargetArchitecture: state.setTargetArchitecture,
+    }))
+  );
   const [language, setLanguage] = useState('micropython');
   const [architecture, setArchitecture] = useState(targetArchitecture);
   const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [editingTemplate, setEditingTemplate] = useState(false);
+  const [templateVersion, setTemplateVersion] = useState(0); // regenerate after template edits
 
-  const projectData = useMemo(() => getProjectData(), []);
+  // Snapshot of the project when the dialog opens
+  const projectData = useMemo(() => getProjectData(), [getProjectData]);
   const availableArchitectures = useMemo(() => getAvailableArchitectures(), []);
 
   useEffect(() => {
+    // Ignore results of a previous language/architecture choice
+    let current = true;
     const generateCode = async () => {
       setIsLoading(true);
       try {
         const generatedCode = language === 'c'
           ? await generateCCode(projectData, architecture)
           : await generateMicroPythonCode(projectData, architecture);
-        setCode(generatedCode);
+        if (current) setCode(generatedCode);
       } catch (error) {
         console.error('Error generating code:', error);
-        setCode(`// Error generating code: ${error.message}`);
+        if (current) setCode(`// Error generating code: ${error.message}`);
       } finally {
-        setIsLoading(false);
+        if (current) setIsLoading(false);
       }
     };
 
     generateCode();
-  }, [language, architecture, projectData]);
+    return () => {
+      current = false;
+    };
+  }, [language, architecture, projectData, templateVersion]);
 
   // Update store when architecture changes
   useEffect(() => {
@@ -40,7 +57,7 @@ const CodeExportModal = ({ onClose }) => {
 
   const handleCopy = () => {
     navigator.clipboard.writeText(code);
-    alert('Code copied to clipboard!');
+    notify('Code copied to clipboard!', { kind: 'success' });
   };
 
   const handleExport = async () => {
@@ -55,10 +72,11 @@ const CodeExportModal = ({ onClose }) => {
       });
 
       if (result.success) {
-        alert('Code exported successfully!');
+        notify('Code exported successfully!', { kind: 'success' });
         onClose();
-      } else {
-        alert('Failed to export code: ' + (result.error || 'Unknown error'));
+      } else if (result.error) {
+        // No error means the user cancelled the save dialog
+        notify('Failed to export code: ' + result.error, { kind: 'error' });
       }
     } else {
       // Fallback for browser testing
@@ -104,6 +122,9 @@ const CodeExportModal = ({ onClose }) => {
             </label>
 
             <div className="export-actions">
+              <button className="btn-secondary" onClick={() => setEditingTemplate(true)} title="Customize the code template">
+                ✏️ Edit Template
+              </button>
               <button className="btn-secondary" onClick={handleCopy} disabled={isLoading}>
                 📋 Copy to Clipboard
               </button>
@@ -132,6 +153,15 @@ const CodeExportModal = ({ onClose }) => {
           </button>
         </div>
       </div>
+      {editingTemplate && (
+        <TemplateEditor
+          language={language}
+          architecture={architecture}
+          architectureName={availableArchitectures.find((arch) => arch.id === architecture)?.name ?? architecture}
+          onClose={() => setEditingTemplate(false)}
+          onChange={() => setTemplateVersion((version) => version + 1)}
+        />
+      )}
     </div>
   );
 };

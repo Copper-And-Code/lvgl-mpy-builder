@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import useStore from '../core/store';
 import { Layout, X } from 'lucide-react';
 import '../styles/TemplateSelector.css';
 
 function TemplateSelector({ onClose }) {
-  const { applyTemplate, getAvailableTemplates } = useStore();
+  const applyTemplate = useStore((state) => state.applyTemplate);
+  const getAvailableTemplates = useStore((state) => state.getAvailableTemplates);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const templates = getAvailableTemplates();
 

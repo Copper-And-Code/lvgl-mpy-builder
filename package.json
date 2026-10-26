@@ -1,7 +1,7 @@
 {
   "name": "lvgl-editor",
-  "version": "3.0.0",
-  "description": "Visual editor for LVGL 9.3 with C and MicroPython code generation - 31 widget types",
+  "version": "4.0.0",
+  "description": "Visual editor for LVGL 9 with code generation for C (LVGL 9.6) and MicroPython (lv_micropython) - 30 widget types",
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron-forge start",
@@ -10,29 +10,42 @@
     "dev": "concurrently \"npm run dev:renderer\" \"wait-on http://localhost:3000 && NODE_ENV=development electron .\"",
     "dev:renderer": "vite",
     "build:renderer": "vite build",
-    "lint": "eslint src --ext js,jsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "eslint src tests --max-warnings 0",
+    "test": "vitest run",
+    "test:e2e": "vite build && node --test \"tests/e2e/*.e2e.mjs\""
   },
-  "keywords": ["lvgl", "editor", "gui", "embedded", "micropython"],
+  "keywords": [
+    "lvgl",
+    "editor",
+    "gui",
+    "embedded",
+    "micropython"
+  ],
   "author": "LVGL Community",
   "license": "MIT",
   "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "konva": "^9.3.0",
-    "react-konva": "^18.2.10",
-    "handlebars": "^4.7.8",
-    "zustand": "^4.4.7",
-    "uuid": "^9.0.1",
-    "lucide-react": "^0.294.0"
+    "handlebars": "^4.7.10",
+    "konva": "^10.9.0",
+    "lucide-react": "^1.61.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-konva": "^19.3.2",
+    "uuid": "^14.0.3",
+    "zustand": "^5.0.16"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.2.1",
-    "electron": "^28.0.0",
-    "electron-forge": "^5.2.4",
-    "vite": "^5.0.8",
-    "concurrently": "^8.2.2",
-    "wait-on": "^7.2.0",
-    "eslint": "^8.55.0",
-    "eslint-plugin-react": "^7.33.2"
+    "@electron-forge/cli": "^8.0.1",
+    "@electron-forge/maker-zip": "^8.0.1",
+    "@eslint/js": "^10.0.1",
+    "@vitejs/plugin-react": "^6.1.2",
+    "concurrently": "^10.0.6",
+    "electron": "^45.0.0",
+    "eslint": "^10.13.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
+    "playwright-core": "^1.64.1",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5",
+    "wait-on": "^9.5.1"
   }
 }

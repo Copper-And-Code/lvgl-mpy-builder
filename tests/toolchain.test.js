@@ -1,0 +1,124 @@
+// Compiles and runs the generated code with the real toolchains. Skipped
+// unless the paths below are provided (CI sets them, see .github/workflows):
+//   LVGL_96_DIR                LVGL 9.6 source tree (lvgl repository root)
+//   MICROPYTHON_LVGL           lv_micropython unix firmware (ports/unix VARIANT=lvgl)
+
+import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { allWidgetsProject, hostileProject } from './fixtures/projects';
+import { generateCCode } from '../src/generators/cGenerator';
+import { generateMicroPythonCode } from '../src/generators/micropythonGenerator';
+import { buildProjectCode } from '../src/generators/core/project';
+import { clearTemplateCache } from '../src/generators/templateLoader';
+import { readTemplate } from '../src/main/templateStore';
+
+const REPO_ROOT = path.resolve(__dirname, '..');
+const PROJECTS = { 'all widgets': allWidgetsProject, hostile: hostileProject };
+const ARCHITECTURES = ['unix', 'stm32', 'esp32'];
+
+const FONT_FLAGS = Array.from({ length: 21 }, (_, i) => `-DLV_FONT_MONTSERRAT_${8 + i * 2}=1`);
+
+let workDir;
+beforeAll(() => {
+  workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lvgl-gen-'));
+});
+afterAll(() => {
+  fs.rmSync(workDir, { recursive: true, force: true });
+});
+beforeEach(() => {
+  clearTemplateCache();
+  vi.stubGlobal('window', {
+    electronAPI: {
+      readTemplate: async (architecture, name) => readTemplate({ bundledDir: REPO_ROOT }, architecture, name),
+    },
+  });
+});
+afterEach(() => {
+  vi.unstubAllGlobals();
+  clearTemplateCache();
+});
+
+function compile(lvglDir, file) {
+  const includeDir = path.join(lvglDir, 'include', 'lvgl');
+  const args = [
+    '-fsyntax-only', '-std=c99', '-Wall', '-Wno-unused-variable',
+    '-Werror=implicit-function-declaration', '-Werror=incompatible-pointer-types', '-Werror=int-conversion',
+    // No aliases and no LV_DEPRECATED functions: the code must also build with LVGL 10
+    '-Werror=deprecated-declarations', '-DLV_CONF_SKIP', '-DLV_DISABLE_API_MAPPING', ...FONT_FLAGS,
+    '-I', path.join(REPO_ROOT, 'tests', 'c-stubs'),
+    '-I', fs.existsSync(includeDir) ? includeDir : lvglDir, '-I', lvglDir,
+    file,
+  ];
+  return spawnSync('gcc', args, { encoding: 'utf-8' });
+}
+
+const LVGL_TREES = [['9.6', process.env.LVGL_96_DIR]].filter(([, dir]) => dir);
+
+describe.runIf(LVGL_TREES.length > 0).each(LVGL_TREES)('C compiles against LVGL %s', (_version, lvglDir) => {
+  describe.each(Object.entries(PROJECTS))('%s project', (label, makeProject) => {
+    it.each(ARCHITECTURES)('%s templates', async (architecture) => {
+      const file = path.join(workDir, `${label.replace(/\W/g, '_')}_${architecture}_${_version}.c`);
+      fs.writeFileSync(file, await generateCCode(makeProject(), architecture));
+      const result = compile(lvglDir, file);
+      expect(result.stderr).toBe('');
+      expect(result.status).toBe(0);
+    });
+  });
+});
+
+// Headless display, then the generated module, then exercise it
+function harness(generated, baseName, pageCount) {
+  return `import lvgl as lv
+import gc
+_disp = lv.display_create(800, 480)
+_buf = bytearray(800 * 40 * 4)
+_disp.set_buffers(_buf, None, len(_buf), lv.DISPLAY_RENDER_MODE.PARTIAL)
+_disp.set_flush_cb(lambda d, area, px: d.flush_ready())
+
+${generated}
+
+def _run(ms):
+    for _ in range(ms // 10):
+        lv.tick_inc(10)
+        lv.timer_handler()
+        gc.collect()
+
+${baseName}_init()
+_run(300)
+for _page in range(${pageCount}):
+    ${baseName}_load_page(_page)
+    _run(100)
+for _obj in list(objects.values()):
+    for _code in (lv.EVENT.CLICKED, lv.EVENT.PRESSED, lv.EVENT.LONG_PRESSED, lv.EVENT.VALUE_CHANGED):
+        _obj.send_event(_code, None)
+_run(500)
+print("RUN_OK", len(objects))
+`;
+}
+
+const firmware = process.env.MICROPYTHON_LVGL;
+
+// CI sets REQUIRE_TOOLCHAIN so that a missing path fails instead of skipping
+describe.runIf(Boolean(process.env.REQUIRE_TOOLCHAIN))('toolchain configuration', () => {
+  it('has LVGL 9.6 and the lv_micropython firmware', () => {
+    expect(fs.existsSync(path.join(process.env.LVGL_96_DIR ?? '', 'lvgl.h'))).toBe(true);
+    expect(fs.existsSync(firmware ?? '')).toBe(true);
+  });
+});
+
+describe.runIf(Boolean(firmware)).each(Object.entries(PROJECTS))('MicroPython runs on lv_micropython: %s project', (label, makeProject) => {
+  it('creates every page and widget, runs animations and events', async () => {
+    const project = makeProject();
+    const { baseName, pages } = buildProjectCode(project, 'micropython');
+    const widgetCount = project.pages.reduce((sum, page) => sum + page.widgets.length, 0);
+    const file = path.join(workDir, `${label.replace(/\W/g, '_')}.py`);
+    fs.writeFileSync(file, harness(await generateMicroPythonCode(project, 'unix'), baseName, pages.length));
+
+    const result = spawnSync(firmware, [file], { encoding: 'utf-8', timeout: 60000 });
+    expect(result.stderr).toBe('');
+    expect(result.stdout.trim()).toBe(`RUN_OK ${widgetCount}`);
+  });
+});

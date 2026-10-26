@@ -1,25 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { Cloud, CloudOff, Upload, Download, RefreshCw, Trash2, Settings } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Cloud, CloudOff, Upload, Download, Trash2 } from 'lucide-react';
 import cloudSync from '../core/cloudSync';
 import useStore from '../core/store';
 import '../styles/CloudSync.css';
+import { notify, showConfirm } from '../core/dialogs';
+import { ExperimentalBadge, ExperimentalNotice } from './ExperimentalNotice';
 
 export default function CloudSyncPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const [status, setStatus] = useState(cloudSync.getStatus());
-  const [providers, setProviders] = useState([]);
+  const [providers] = useState(() => cloudSync.getProviders());
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [showConnectDialog, setShowConnectDialog] = useState(false);
   const [showProjectsDialog, setShowProjectsDialog] = useState(false);
   const [cloudProjects, setCloudProjects] = useState([]);
   const [apiKey, setApiKey] = useState('');
-  const [autoSync, setAutoSync] = useState(false);
 
   const getProjectData = useStore((state) => state.getProjectData);
   const loadProject = useStore((state) => state.loadProject);
 
   useEffect(() => {
-    setProviders(cloudSync.getProviders());
     const interval = setInterval(() => {
       setStatus(cloudSync.getStatus());
     }, 1000);
@@ -29,7 +29,7 @@ export default function CloudSyncPanel() {
 
   const handleConnect = async () => {
     if (!selectedProvider) {
-      alert('Please select a provider');
+      notify('Please select a provider', { kind: 'error' });
       return;
     }
 
@@ -37,9 +37,9 @@ export default function CloudSyncPanel() {
       await cloudSync.setActiveProvider(selectedProvider, { apiKey });
       setStatus(cloudSync.getStatus());
       setShowConnectDialog(false);
-      alert('Connected successfully');
+      notify('Connected successfully', { kind: 'success' });
     } catch (error) {
-      alert(`Connection failed: ${error.message}`);
+      notify(`Connection failed: ${error.message}`, { kind: 'error' });
     }
   };
 
@@ -47,9 +47,8 @@ export default function CloudSyncPanel() {
     try {
       await cloudSync.disconnect();
       setStatus(cloudSync.getStatus());
-      setAutoSync(false);
     } catch (error) {
-      alert(`Disconnect failed: ${error.message}`);
+      notify(`Disconnect failed: ${error.message}`, { kind: 'error' });
     }
   };
 
@@ -58,9 +57,9 @@ export default function CloudSyncPanel() {
       const projectData = getProjectData();
       await cloudSync.saveProject(projectData);
       setStatus(cloudSync.getStatus());
-      alert('Project saved to cloud');
+      notify('Project saved to cloud', { kind: 'success' });
     } catch (error) {
-      alert(`Save failed: ${error.message}`);
+      notify(`Save failed: ${error.message}`, { kind: 'error' });
     }
   };
 
@@ -70,7 +69,7 @@ export default function CloudSyncPanel() {
       setCloudProjects(projects);
       setShowProjectsDialog(true);
     } catch (error) {
-      alert(`Failed to load projects: ${error.message}`);
+      notify(`Failed to load projects: ${error.message}`, { kind: 'error' });
     }
   };
 
@@ -79,29 +78,23 @@ export default function CloudSyncPanel() {
       const projectData = await cloudSync.loadProject(projectId);
       loadProject(projectData);
       setShowProjectsDialog(false);
-      alert('Project loaded from cloud');
+      notify('Project loaded from cloud', { kind: 'success' });
     } catch (error) {
-      alert(`Load failed: ${error.message}`);
+      notify(`Load failed: ${error.message}`, { kind: 'error' });
     }
   };
 
   const handleDeleteProject = async (projectId) => {
-    if (!confirm('Delete this project from cloud?')) return;
+    if (!(await showConfirm('Delete this project from the cloud?', { confirmLabel: 'Delete', danger: true }))) return;
 
     try {
       await cloudSync.deleteProject(projectId);
       const projects = await cloudSync.listProjects();
       setCloudProjects(projects);
-      alert('Project deleted');
+      notify('Project deleted', { kind: 'success' });
     } catch (error) {
-      alert(`Delete failed: ${error.message}`);
+      notify(`Delete failed: ${error.message}`, { kind: 'error' });
     }
-  };
-
-  const handleToggleAutoSync = () => {
-    const newAutoSync = !autoSync;
-    setAutoSync(newAutoSync);
-    cloudSync.setAutoSync(newAutoSync);
   };
 
   const getStatusColor = () => {
@@ -143,9 +136,11 @@ export default function CloudSyncPanel() {
             <h3>
               <Cloud size={18} />
               Cloud Sync
+              <ExperimentalBadge />
             </h3>
             <button onClick={() => setIsOpen(false)}>×</button>
           </div>
+          <ExperimentalNotice feature="cloudSync" />
 
           <div className="cloud-status">
             <div className="status-indicator" style={{ background: getStatusColor() }} />
@@ -184,17 +179,6 @@ export default function CloudSyncPanel() {
                   <Download size={16} />
                   Load from Cloud
                 </button>
-              </div>
-
-              <div className="cloud-settings">
-                <label className="setting-item">
-                  <input
-                    type="checkbox"
-                    checked={autoSync}
-                    onChange={handleToggleAutoSync}
-                  />
-                  <span>Auto-sync (every 5 minutes)</span>
-                </label>
               </div>
 
               <div className="cloud-disconnect">

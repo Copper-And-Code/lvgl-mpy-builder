@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Users, UserPlus, Link, Unlink, Circle } from 'lucide-react';
 import collaboration from '../core/collaboration';
 import '../styles/CollaborationPanel.css';
+import { notify } from '../core/dialogs';
+import { ExperimentalBadge, ExperimentalNotice } from './ExperimentalNotice';
 
 export default function CollaborationPanel() {
   const [isOpen, setIsOpen] = useState(false);
@@ -48,7 +50,7 @@ export default function CollaborationPanel() {
 
   const handleConnect = async () => {
     if (!serverUrl.trim() || !sessionId.trim()) {
-      alert('Please enter server URL and session ID');
+      notify('Please enter server URL and session ID', { kind: 'error' });
       return;
     }
 
@@ -56,9 +58,9 @@ export default function CollaborationPanel() {
       await collaboration.connect(serverUrl, sessionId, userName);
       setStatus(collaboration.getStatus());
       setShowConnectDialog(false);
-      alert('Connected to collaboration session');
+      notify('Connected to collaboration session', { kind: 'success' });
     } catch (error) {
-      alert(`Connection failed: ${error.message}`);
+      notify(`Connection failed: ${error.message}`, { kind: 'error' });
     }
   };
 
@@ -95,9 +97,11 @@ export default function CollaborationPanel() {
             <h3>
               <Users size={18} />
               Collaboration
+              <ExperimentalBadge />
             </h3>
             <button onClick={() => setIsOpen(false)}>×</button>
           </div>
+          <ExperimentalNotice feature="collaboration" />
 
           <div className="collaboration-status">
             <div className="status-row">
@@ -163,7 +167,7 @@ export default function CollaborationPanel() {
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(status.sessionId);
-                    alert('Session ID copied to clipboard');
+                    notify('Session ID copied to clipboard', { kind: 'success' });
                   }}
                   title="Copy session ID"
                 >

@@ -1,9 +1,22 @@
 // Template Loader for Code Generation
 // Loads external template files that can be customized by users
 // Supports multi-architecture templates (unix, stm32, esp32, rp2040, nrf52, etc.)
-// Updated for LVGL 9.3
+// C templates target LVGL 9.6, MicroPython templates the lv_micropython binding (LVGL 9.3)
 
-import Handlebars from 'handlebars';
+import HandlebarsBase from 'handlebars';
+import { indentText } from './indent';
+
+export { indentText };
+
+// Isolated Handlebars environment for code generation
+const Handlebars = HandlebarsBase.create();
+
+Handlebars.registerHelper('indent', (text, spaces) => indentText(text, spaces));
+
+// Template file access is only available inside Electron (see preload.js)
+function getElectronAPI() {
+  return typeof window !== 'undefined' ? window.electronAPI : undefined;
+}
 
 // Supported architectures
 export const ARCHITECTURES = {
@@ -18,105 +31,23 @@ export const ARCHITECTURES = {
 export const DEFAULT_ARCHITECTURE = ARCHITECTURES.STM32;
 
 // Default templates (fallback if external files are not available)
-// Updated for LVGL 9.3 API
+// C templates target LVGL 9.6, MicroPython templates the lv_micropython binding (LVGL 9.3) API
 const defaultTemplates = {
   c: `/*
- * Auto-generated LVGL 9.3 UI Code
- * Project: {{projectName}}
- * Generated: {{generatedDate}}
- * Display Size: {{canvasWidth}}x{{canvasHeight}}
- *
- * LVGL Version: 9.3
- */
-
-#include "lvgl.h"
-
-{{#if hasEventCallbacks}}
-/* Event callback declarations */
-{{#each eventCallbacks}}
-static void {{this.name}}(lv_event_t *e);
-{{/each}}
-
-{{/if}}
-void {{functionName}}(lv_obj_t *parent)
-{
-    if (parent == NULL) {
-        parent = lv_screen_active();
-    }
-
-{{#each widgets}}
-{{{this}}}
-{{/each}}
-}
-
-{{#if hasEventCallbacks}}
-{{#each eventCallbacks}}
-static void {{this.name}}(lv_event_t *e)
-{
-    lv_event_code_t code = lv_event_get_code(e);
-    lv_obj_t *obj = lv_event_get_target_obj(e);
-
-    if (code == {{this.type}}) {
-        {{this.code}}
-    }
-}
-
-{{/each}}
-{{/if}}
-void {{functionName}}_init(void)
-{
-    lv_obj_t *screen = lv_obj_create(NULL);
-    {{functionName}}(screen);
-    lv_screen_load(screen);
-}
-`,
-
-  micropython: `"""
-Auto-generated LVGL 9.3 UI Code for MicroPython
-Project: {{projectName}}
-Generated: {{generatedDate}}
-Display Size: {{canvasWidth}}x{{canvasHeight}}
-
-LVGL Version: 9.3
-"""
-
-import lvgl as lv
-
-{{#if hasEventCallbacks}}
-{{#each eventCallbacks}}
-def {{this.name}}(e):
-    code = e.get_code()
-    obj = e.get_target_obj()
-
-    if code == lv.EVENT.{{this.eventType}}:
-        {{this.code}}
-
-{{/each}}
-{{/if}}
-def {{functionName}}(parent=None):
-    if parent is None:
-        parent = lv.screen_active()
-
-{{#each widgets}}
-{{{this}}}
-{{/each}}
-
-def {{functionName}}_init():
-    screen = lv.obj()
-    {{functionName}}(screen)
-    lv.screen_load(screen)
-`,
-
-  c_multipage: `/*
- * Auto-generated LVGL 9.3 UI Code (Multi-Page)
+ * Auto-generated LVGL UI Code
  * Project: {{projectName}}
  * Generated: {{generatedDate}}
  * Pages: {{pageCount}}
  *
- * LVGL Version: 9.3
+ * LVGL Version: 9.6 (no deprecated APIs)
  */
 
 #include "lvgl.h"
+
+{{#if declarations}}
+{{declarations}}
+
+{{/if}}
 
 {{#if hasEventCallbacks}}
 {{#each eventCallbacks}}
@@ -146,10 +77,9 @@ static void {{this.name}}(lv_event_t *e)
 {
     lv_event_code_t code = lv_event_get_code(e);
     lv_obj_t *obj = lv_event_get_target_obj(e);
+    LV_UNUSED(obj);
 
-    if (code == {{this.type}}) {
-        {{this.code}}
-    }
+    {{indent this.body 4}}
 }
 
 {{/each}}
@@ -212,16 +142,21 @@ void {{baseName}}_init(void)
 }
 `,
 
-  micropython_multipage: `"""
-Auto-generated LVGL 9.3 UI Code for MicroPython (Multi-Page)
+  micropython: `"""
+Auto-generated LVGL UI Code for MicroPython
 Project: {{projectName}}
 Generated: {{generatedDate}}
 Pages: {{pageCount}}
 
-LVGL Version: 9.3
+LVGL Version: 9.3 (lv_micropython binding)
 """
 
 import lvgl as lv
+
+{{#if declarations}}
+{{declarations}}
+
+{{/if}}
 
 {{#if hasEventCallbacks}}
 {{#each eventCallbacks}}
@@ -229,8 +164,7 @@ def {{this.name}}(e):
     code = e.get_code()
     obj = e.get_target_obj()
 
-    if code == lv.EVENT.{{this.eventType}}:
-        {{this.code}}
+    {{indent this.body 4}}
 
 {{/each}}
 {{/if}}
@@ -297,7 +231,7 @@ const templateCache = {};
 
 /**
  * Load a template from file or use default
- * @param {string} templateName - Name of the template (c, micropython, c_multipage, micropython_multipage)
+ * @param {string} templateName - Name of the template (c, micropython)
  * @param {string} architecture - Target architecture (unix, stm32, esp32, rp2040, nrf52, etc.)
  * @returns {Promise<Function>} Compiled Handlebars template
  */
@@ -312,9 +246,9 @@ export async function loadTemplate(templateName, architecture = DEFAULT_ARCHITEC
 
   // Try to load from external file with architecture-specific path
   try {
-    if (window.electronAPI && window.electronAPI.readFile) {
-      const templatePath = `templates/${architecture}/${templateName}_template.hbs`;
-      templateSource = await window.electronAPI.readFile(templatePath);
+    const api = getElectronAPI();
+    if (api?.readTemplate) {
+      templateSource = await api.readTemplate(architecture, templateName);
     }
   } catch (error) {
     console.warn(`Could not load external template ${templateName} for ${architecture}:`, error);
@@ -330,7 +264,9 @@ export async function loadTemplate(templateName, architecture = DEFAULT_ARCHITEC
   }
 
   // Compile template
-  const compiledTemplate = Handlebars.compile(templateSource);
+  // The output is source code, not HTML: never HTML-escape values
+  // (otherwise `a = b > c` becomes `a &#x3D; b &gt; c`)
+  const compiledTemplate = Handlebars.compile(templateSource, { noEscape: true });
 
   // Cache the compiled template
   templateCache[cacheKey] = compiledTemplate;
@@ -346,54 +282,49 @@ export function clearTemplateCache() {
 }
 
 /**
- * Get template source code for editing
+ * Render a code template with `data`. In Electron the main process renders
+ * it (compiling templates needs eval, which the renderer's CSP forbids);
+ * elsewhere (browser during development, tests) it is compiled here.
+ */
+export async function renderTemplate(templateName, architecture = DEFAULT_ARCHITECTURE, data = {}) {
+  const api = getElectronAPI();
+  if (api?.renderTemplate) {
+    return api.renderTemplate(architecture, templateName, data, defaultTemplates[templateName]);
+  }
+  const template = await loadTemplate(templateName, architecture);
+  return template(data);
+}
+
+/**
+ * Template source for the template editor.
+ * @returns {Promise<{ source: string, customized: boolean, editable: boolean }>}
  */
 export async function getTemplateSource(templateName, architecture = DEFAULT_ARCHITECTURE) {
-  try {
-    if (window.electronAPI && window.electronAPI.readFile) {
-      const templatePath = `templates/${architecture}/${templateName}_template.hbs`;
-      return await window.electronAPI.readFile(templatePath);
-    }
-  } catch (error) {
-    // File doesn't exist or can't be read
+  const api = getElectronAPI();
+  if (api?.getTemplate) {
+    const { source, customized } = await api.getTemplate(architecture, templateName);
+    return { source: source ?? defaultTemplates[templateName] ?? '', customized, editable: true };
   }
-
-  return defaultTemplates[templateName] || '';
+  return { source: defaultTemplates[templateName] ?? '', customized: false, editable: false };
 }
 
 /**
- * Save template source code
+ * Save a customized template (desktop app only).
+ * @throws {Error} if the template does not compile or cannot be saved
  */
 export async function saveTemplateSource(templateName, architecture = DEFAULT_ARCHITECTURE, source) {
-  try {
-    if (window.electronAPI && window.electronAPI.writeFile) {
-      const templatePath = `templates/${architecture}/${templateName}_template.hbs`;
-      await window.electronAPI.writeFile(templatePath, source);
-
-      // Clear cache to force reload
-      const cacheKey = `${architecture}_${templateName}`;
-      delete templateCache[cacheKey];
-
-      return true;
-    }
-  } catch (error) {
-    console.error(`Could not save template ${templateName} for ${architecture}:`, error);
-    return false;
-  }
-
-  return false;
+  const api = getElectronAPI();
+  if (!api?.writeTemplate) throw new Error('Templates can be customized in the desktop app');
+  await api.writeTemplate(architecture, templateName, source);
+  delete templateCache[`${architecture}_${templateName}`];
 }
 
-/**
- * Reset template to default
- */
+/** Remove the customized copy: the bundled template is used again. */
 export async function resetTemplate(templateName, architecture = DEFAULT_ARCHITECTURE) {
-  const defaultSource = defaultTemplates[templateName];
-  if (!defaultSource) {
-    return false;
-  }
-
-  return await saveTemplateSource(templateName, architecture, defaultSource);
+  const api = getElectronAPI();
+  if (!api?.resetTemplate) throw new Error('Templates can be customized in the desktop app');
+  await api.resetTemplate(architecture, templateName);
+  delete templateCache[`${architecture}_${templateName}`];
 }
 
 /**
@@ -401,10 +332,8 @@ export async function resetTemplate(templateName, architecture = DEFAULT_ARCHITE
  */
 export function getAvailableTemplates() {
   return [
-    { name: 'c', label: 'C (Single Page)' },
-    { name: 'micropython', label: 'MicroPython (Single Page)' },
-    { name: 'c_multipage', label: 'C (Multi-Page)' },
-    { name: 'micropython_multipage', label: 'MicroPython (Multi-Page)' },
+    { name: 'c', label: 'C' },
+    { name: 'micropython', label: 'MicroPython' },
   ];
 }
 
@@ -451,6 +380,7 @@ export function isArchitectureSupported(architecture) {
 export default {
   loadTemplate,
   clearTemplateCache,
+  renderTemplate,
   getTemplateSource,
   saveTemplateSource,
   resetTemplate,

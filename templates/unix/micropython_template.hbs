@@ -1,61 +1,113 @@
 """
-Auto-generated LVGL 9.3 UI Code for MicroPython
+Auto-generated LVGL UI Code for MicroPython
 Project: {{projectName}}
 Generated: {{generatedDate}}
-Display Size: {{canvasWidth}}x{{canvasHeight}}
-
-LVGL Version: 9.3
+Pages: {{pageCount}}
 Target: Unix/Linux
 
-This is a customizable template file.
-You can modify this file to change the structure of the generated code.
+LVGL Version: 9.3 (lv_micropython binding)
 
-Available variables:
-- projectName: Name of the project
-- generatedDate: ISO date string
-- canvasWidth, canvasHeight: Canvas dimensions
-- functionName: Sanitized function name
-- hasEventCallbacks: Boolean, true if there are event callbacks
-- eventCallbacks: Array of {name, type, code, eventType}
-- widgets: Array of widget code strings
+This is a customizable template file for Unix/Linux projects.
+You can modify this file to change the structure of the generated code.
 """
 
 import lvgl as lv
+
+{{#if declarations}}
+{{declarations}}
+
+{{/if}}
 
 {{#if hasEventCallbacks}}
 # Event callback implementations
 {{#each eventCallbacks}}
 def {{this.name}}(e):
-    """Event handler for {{this.type}}"""
+    """Event handler (see the branches below for the handled events)"""
     code = e.get_code()
     obj = e.get_target_obj()
 
-    if code == lv.EVENT.{{this.eventType}}:
-        {{this.code}}
+    {{indent this.body 4}}
 
 {{/each}}
 {{/if}}
-def {{functionName}}(parent=None):
-    """
-    Create the UI for {{projectName}}
+# Screen objects for each page
+screens = [None] * {{pageCount}}
+current_screen = 0
 
-    Args:
-        parent: Parent object (use lv.screen_active() for screen)
+{{#each pages}}
+def {{this.functionName}}(parent=None):
+    """
+    Create page: {{this.name}}
+    Size: {{this.width}}x{{this.height}}
+    Widgets: {{this.widgetCount}}
     """
     if parent is None:
         parent = lv.screen_active()
 
-{{#each widgets}}
+{{#each this.widgets}}
 {{{this}}}
 {{/each}}
 
-def {{functionName}}_init():
+{{/each}}
+def {{baseName}}_load_page(page_index):
     """
-    Initialize and show the UI
+    Load a specific page by index
+
+    Args:
+        page_index: Index of the page to load (0-{{lastPageIndex}})
     """
-    screen = lv.obj()
-    {{functionName}}(screen)
-    lv.screen_load(screen)
+    global screens, current_screen
+
+    if page_index < 0 or page_index >= {{pageCount}}:
+        return
+
+    if screens[page_index] is None:
+        screens[page_index] = lv.obj()
+
+        # Create the page based on index
+{{#each pages}}
+        {{#if @first}}if{{else}}elif{{/if}} page_index == {{@index}}:
+            {{this.functionName}}(screens[{{@index}}])
+{{/each}}
+
+    lv.screen_load(screens[page_index])
+    current_screen = page_index
+
+def {{baseName}}_load_page_anim(page_index, anim, time_ms, delay_ms):
+    """Load page with animation"""
+    global screens, current_screen
+
+    if page_index < 0 or page_index >= {{pageCount}}:
+        return
+
+    if screens[page_index] is None:
+        screens[page_index] = lv.obj()
+
+{{#each pages}}
+        {{#if @first}}if{{else}}elif{{/if}} page_index == {{@index}}:
+            {{this.functionName}}(screens[{{@index}}])
+{{/each}}
+
+    lv.screen_load_anim(screens[page_index], anim, time_ms, delay_ms, False)
+    current_screen = page_index
+
+def {{baseName}}_get_current_page():
+    """Get current page index"""
+    return current_screen
+
+def {{baseName}}_init():
+    """
+    Initialize all screens and show the first page
+    """
+    global screens, current_screen
+
+    # Initialize screen array
+    screens = [None] * {{pageCount}}
+    current_screen = 0
+
+    # Load first page
+    {{baseName}}_load_page(0)
 
 # Example usage:
-# {{functionName}}_init()
+# {{baseName}}_init()
+# {{baseName}}_load_page(1)  # Switch to page 1

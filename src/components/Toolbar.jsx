@@ -1,14 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import useStore from '../core/store';
+import { useState, useEffect, useEffectEvent } from 'react';
+import { useShallow } from 'zustand/react/shallow';
+import useStore, { selectCanRedo, selectCanUndo, selectCanvasSize } from '../core/store';
+import { notify, showAlert, showConfirm, warningsMessage } from '../core/dialogs';
 import CodeExportModal from './CodeExportModal';
 import TemplateSelector from './TemplateSelector';
 import AssetManager from './AssetManager';
+import SettingsDialog from './SettingsDialog';
 
 const Toolbar = () => {
+  const canvasSize = useStore(selectCanvasSize);
+  const canUndo = useStore(selectCanUndo);
+  const canRedo = useStore(selectCanRedo);
   const {
     projectName,
     setProjectName,
-    canvasSize,
     setCanvasSize,
     displayPresets,
     zoom,
@@ -22,24 +27,46 @@ const Toolbar = () => {
     clearProject,
     getProjectData,
     loadProject,
-  } = useStore();
+  } = useStore(
+    useShallow((state) => ({
+      projectName: state.projectName,
+      setProjectName: state.setProjectName,
+      setCanvasSize: state.setCanvasSize,
+      displayPresets: state.displayPresets,
+      zoom: state.zoom,
+      setZoom: state.setZoom,
+      gridEnabled: state.gridEnabled,
+      toggleGrid: state.toggleGrid,
+      snapToGrid: state.snapToGrid,
+      toggleSnapToGrid: state.toggleSnapToGrid,
+      undo: state.undo,
+      redo: state.redo,
+      clearProject: state.clearProject,
+      getProjectData: state.getProjectData,
+      loadProject: state.loadProject,
+    }))
+  );
 
   const [showExportModal, setShowExportModal] = useState(false);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [showAssetManager, setShowAssetManager] = useState(false);
-  const [customWidth, setCustomWidth] = useState(canvasSize.width);
-  const [customHeight, setCustomHeight] = useState(canvasSize.height);
+  const [showSettings, setShowSettings] = useState(false);
+  // Width/height being typed; reset when the page size changes (preset, page switch, load)
+  const [sizeInputs, setSizeInputs] = useState({ width: canvasSize.width, height: canvasSize.height, for: canvasSize });
+  if (sizeInputs.for !== canvasSize) {
+    setSizeInputs({ width: canvasSize.width, height: canvasSize.height, for: canvasSize });
+  }
+  const customWidth = sizeInputs.width;
+  const customHeight = sizeInputs.height;
+  const setCustomWidth = (width) => setSizeInputs((inputs) => ({ ...inputs, width }));
+  const setCustomHeight = (height) => setSizeInputs((inputs) => ({ ...inputs, height }));
 
-  // Keep local inputs in sync when canvasSize changes (e.g., preset or load project)
-  useEffect(() => {
-    setCustomWidth(canvasSize.width);
-    setCustomHeight(canvasSize.height);
-  }, [canvasSize.width, canvasSize.height]);
-
-  const handleNewProject = () => {
-    if (confirm('Create a new project? Unsaved changes will be lost.')) {
-      clearProject();
-    }
+  const handleNewProject = async () => {
+    const confirmed = await showConfirm('Create a new project? Unsaved changes will be lost.', {
+      confirmLabel: 'New project',
+      danger: true,
+    });
+    if (confirmed) clearProject();
   };
 
   const handleSaveProject = async () => {
@@ -47,9 +74,9 @@ const Toolbar = () => {
       const projectData = getProjectData();
       const result = await window.electron.saveProject(projectData);
       if (result.success) {
-        alert('Project saved successfully!');
-      } else {
-        alert('Failed to save project: ' + (result.error || 'Unknown error'));
+        notify('Project saved', { kind: 'success' });
+      } else if (result.error) {
+        notify('Failed to save project: ' + result.error, { kind: 'error' });
       }
     } else {
       const projectData = getProjectData();
@@ -68,13 +95,21 @@ const Toolbar = () => {
     if (window.electron) {
       const result = await window.electron.loadProject();
       if (result.success) {
-        loadProject(result.data);
-        alert('Project loaded successfully!');
+        try {
+          const warnings = loadProject(result.data);
+          if (warnings.length) {
+            showAlert(warningsMessage(`The project was loaded with ${warnings.length} correction(s):`, warnings));
+          } else {
+            notify('Project loaded', { kind: 'success' });
+          }
+        } catch (error) {
+          notify('Failed to load project: ' + error.message, { kind: 'error' });
+        }
       } else if (result.error) {
-        alert('Failed to load project: ' + result.error);
+        notify('Failed to load project: ' + result.error, { kind: 'error' });
       }
     } else {
-      alert('Load project is only available in Electron app');
+      notify('Loading projects is available in the desktop app', { kind: 'info' });
     }
   };
 
@@ -95,8 +130,6 @@ const Toolbar = () => {
     const w = Math.max(64, Math.min(4096, parseInt(customWidth) || 1024));
     const h = Math.max(64, Math.min(4096, parseInt(customHeight) || 600));
     setCanvasSize({ width: w, height: h });
-    setCustomWidth(w);
-    setCustomHeight(h);
   };
 
   const handleSizeKeyDown = (e) => {
@@ -110,47 +143,25 @@ const Toolbar = () => {
     p => p.width === canvasSize.width && p.height === canvasSize.height
   );
 
-  // Handle menu commands from Electron
-  useEffect(() => {
-    if (window.electron && window.electron.onMenuCommand) {
-      window.electron.onMenuCommand((command) => {
-        switch (command) {
-          case 'menu-new-project':
-            handleNewProject();
-            break;
-          case 'menu-open-project':
-            handleLoadProject();
-            break;
-          case 'menu-save-project':
-            handleSaveProject();
-            break;
-          case 'menu-export-code':
-            setShowExportModal(true);
-            break;
-          case 'menu-undo':
-            undo();
-            break;
-          case 'menu-redo':
-            redo();
-            break;
-          case 'menu-zoom-in':
-            handleZoomIn();
-            break;
-          case 'menu-zoom-out':
-            handleZoomOut();
-            break;
-          case 'menu-zoom-reset':
-            handleZoomReset();
-            break;
-          case 'menu-toggle-grid':
-            toggleGrid();
-            break;
-          default:
-            console.log('Unknown menu command:', command);
-        }
-      });
-    }
-  }, []);
+  // Menu commands from Electron: the event function always sees the current
+  // state (e.g. zoom), and the listener is registered once and removed on unmount
+  const onMenuCommand = useEffectEvent((command) => {
+    const actions = {
+      'menu-new-project': handleNewProject,
+      'menu-open-project': handleLoadProject,
+      'menu-save-project': handleSaveProject,
+      'menu-export-code': () => setShowExportModal(true),
+      'menu-undo': undo,
+      'menu-redo': redo,
+      'menu-zoom-in': handleZoomIn,
+      'menu-zoom-out': handleZoomOut,
+      'menu-zoom-reset': handleZoomReset,
+      'menu-toggle-grid': toggleGrid,
+    };
+    actions[command]?.();
+  });
+
+  useEffect(() => window.electron?.onMenuCommand?.((command) => onMenuCommand(command)), []);
 
   return (
     <>
@@ -179,8 +190,8 @@ const Toolbar = () => {
         </div>
 
         <div className="toolbar-section toolbar-divider">
-          <button className="toolbar-btn" onClick={undo} title="Undo">Undo</button>
-          <button className="toolbar-btn" onClick={redo} title="Redo">Redo</button>
+          <button className="toolbar-btn" onClick={undo} title="Undo" disabled={!canUndo}>Undo</button>
+          <button className="toolbar-btn" onClick={redo} title="Redo" disabled={!canRedo}>Redo</button>
         </div>
 
         {/* Display size controls */}
@@ -258,6 +269,9 @@ const Toolbar = () => {
           >
             Assets
           </button>
+          <button className="toolbar-btn" onClick={() => setShowSettings(true)} title="Editor settings">
+            Settings
+          </button>
         </div>
 
         <div className="toolbar-section">
@@ -274,6 +288,7 @@ const Toolbar = () => {
       {showExportModal && <CodeExportModal onClose={() => setShowExportModal(false)} />}
       {showTemplateSelector && <TemplateSelector onClose={() => setShowTemplateSelector(false)} />}
       {showAssetManager && <AssetManager onClose={() => setShowAssetManager(false)} />}
+      {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
     </>
   );
 };

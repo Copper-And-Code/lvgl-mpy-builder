@@ -20,13 +20,25 @@ contextBridge.exposeInMainWorld('electron', {
       'menu-toggle-grid'
     ];
 
-    channels.forEach(channel => {
-      ipcRenderer.on(channel, () => callback(channel));
+    const listeners = channels.map((channel) => {
+      const listener = () => callback(channel);
+      ipcRenderer.on(channel, listener);
+      return [channel, listener];
     });
+    // Unsubscribe function, so a listener is never registered twice
+    return () => listeners.forEach(([channel, listener]) => ipcRenderer.removeListener(channel, listener));
   }
 });
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  readFile: (filePath) => ipcRenderer.invoke('read-file', filePath),
-  writeFile: (filePath, content) => ipcRenderer.invoke('write-file', filePath, content),
+  readTemplate: (architecture, templateName) =>
+    ipcRenderer.invoke('read-template', architecture, templateName),
+  getTemplate: (architecture, templateName) =>
+    ipcRenderer.invoke('get-template', architecture, templateName),
+  renderTemplate: (architecture, templateName, data, builtinSource) =>
+    ipcRenderer.invoke('render-template', architecture, templateName, data, builtinSource),
+  writeTemplate: (architecture, templateName, content) =>
+    ipcRenderer.invoke('write-template', architecture, templateName, content),
+  resetTemplate: (architecture, templateName) =>
+    ipcRenderer.invoke('reset-template', architecture, templateName),
 });

@@ -1,10 +1,13 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import useStore from '../core/store';
 import { Image, Type, Upload, Trash2, X, FileImage, FileText } from 'lucide-react';
 import '../styles/AssetManager.css';
+import { showConfirm } from '../core/dialogs';
 
 function AssetManager({ onClose }) {
-  const { assets, addAsset, removeAsset } = useStore();
+  const assets = useStore((state) => state.assets);
+  const addAsset = useStore((state) => state.addAsset);
+  const removeAsset = useStore((state) => state.removeAsset);
   const [activeTab, setActiveTab] = useState('images');
   const fileInputRef = useRef(null);
 
@@ -43,8 +46,8 @@ function AssetManager({ onClose }) {
     fileInputRef.current.click();
   };
 
-  const handleDeleteAsset = (type, assetId) => {
-    if (confirm('Are you sure you want to delete this asset?')) {
+  const handleDeleteAsset = async (type, assetId) => {
+    if (await showConfirm('Delete this asset?', { confirmLabel: 'Delete', danger: true })) {
       removeAsset(type, assetId);
     }
   };
@@ -109,7 +112,7 @@ function AssetManager({ onClose }) {
               <FileText size={48} />
               <p>No {activeTab} uploaded yet</p>
               <p className="empty-hint">
-                Click "Upload" to add {activeTab === 'images' ? 'images' : 'fonts'} to your project
+                Click “Upload” to add {activeTab === 'images' ? 'images' : 'fonts'} to your project
               </p>
             </div>
           ) : (

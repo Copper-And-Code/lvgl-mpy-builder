@@ -1,27 +1,26 @@
-import React from 'react';
-import useStore from '../core/store';
+import { useShallow } from 'zustand/react/shallow';
+import useStore, { selectWidgets } from '../core/store';
+import { childrenByParent } from '../core/projectModel';
 import { widgetDefinitions } from '../core/widgetDefinitions';
 import '../styles/HierarchyPanel.css';
 
 const HierarchyPanel = () => {
-  const { widgets, selectedWidgetId, selectWidget, updateWidgetParent, moveWidgetToFront, moveWidgetToBack } = useStore();
+  const widgets = useStore(selectWidgets);
+  const { selectedWidgetId, selectWidget, setWidgetParent, moveWidgetToFront, moveWidgetToBack } = useStore(
+    useShallow((state) => ({
+      selectedWidgetId: state.selectedWidgetId,
+      selectWidget: state.selectWidget,
+      setWidgetParent: state.setWidgetParent,
+      moveWidgetToFront: state.moveWidgetToFront,
+      moveWidgetToBack: state.moveWidgetToBack,
+    }))
+  );
 
-  // Build hierarchy tree
+  // Build hierarchy tree (widgets whose parent is missing are shown at the top level)
   const buildTree = () => {
-    const rootWidgets = widgets.filter(w => !w.parentId);
-    const widgetMap = {};
-
-    widgets.forEach(w => {
-      widgetMap[w.id] = { ...w, children: [] };
-    });
-
-    widgets.forEach(w => {
-      if (w.parentId && widgetMap[w.parentId]) {
-        widgetMap[w.parentId].children.push(widgetMap[w.id]);
-      }
-    });
-
-    return rootWidgets.map(w => widgetMap[w.id]);
+    const children = childrenByParent(widgets);
+    const toNode = (widget) => ({ ...widget, children: (children.get(widget.id) ?? []).map(toNode) });
+    return (children.get(null) ?? []).map(toNode);
   };
 
   const handleDragStart = (e, widgetId) => {
@@ -50,7 +49,7 @@ const HierarchyPanel = () => {
       };
 
       if (!isDescendant(draggedWidgetId, targetWidgetId)) {
-        updateWidgetParent(draggedWidgetId, targetWidgetId);
+        setWidgetParent(draggedWidgetId, targetWidgetId);
       }
     }
   };
@@ -61,7 +60,7 @@ const HierarchyPanel = () => {
 
     const draggedWidgetId = e.dataTransfer.getData('widgetId');
     if (draggedWidgetId) {
-      updateWidgetParent(draggedWidgetId, null);
+      setWidgetParent(draggedWidgetId, null);
     }
   };
 

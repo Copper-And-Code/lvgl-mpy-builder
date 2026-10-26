@@ -1,31 +1,37 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useStore from '../core/store';
 import { Plus, Trash2, Edit2, Copy, Check, X } from 'lucide-react';
 import '../styles/PageManager.css';
+import { showConfirm } from '../core/dialogs';
 
 function PageManager() {
-  const {
-    pages,
-    currentPageId,
-    addPage,
-    deletePage,
-    renamePage,
-    switchPage,
-    duplicatePage,
-  } = useStore();
+  const { pages, currentPageId, addPage, deletePage, renamePage, switchPage, duplicatePage } = useStore(
+    useShallow((state) => ({
+      pages: state.pages,
+      currentPageId: state.currentPageId,
+      addPage: state.addPage,
+      deletePage: state.deletePage,
+      renamePage: state.renamePage,
+      switchPage: state.switchPage,
+      duplicatePage: state.duplicatePage,
+    }))
+  );
 
   const [editingPageId, setEditingPageId] = useState(null);
   const [editingName, setEditingName] = useState('');
 
+  // The new page gets a default name, ready to be renamed inline
   const handleAddPage = () => {
-    const name = prompt('Enter page name:');
-    if (name) {
-      addPage(name);
-    }
+    const id = addPage();
+    const page = useStore.getState().pages.find((p) => p.id === id);
+    setEditingPageId(id);
+    setEditingName(page?.name ?? '');
   };
 
-  const handleDeletePage = (pageId) => {
-    if (confirm('Are you sure you want to delete this page?')) {
+  const handleDeletePage = async (pageId) => {
+    const page = pages.find((p) => p.id === pageId);
+    if (await showConfirm(`Delete page "${page?.name}" and its widgets?`, { confirmLabel: 'Delete', danger: true })) {
       deletePage(pageId);
     }
   };

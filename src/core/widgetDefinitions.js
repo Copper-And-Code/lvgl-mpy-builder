@@ -86,11 +86,11 @@ export const LVGL_TEXT_ALIGN = {
 };
 
 export const LVGL_LABEL_LONG_MODE = {
-  WRAP: 'LV_LABEL_LONG_WRAP',
-  DOT: 'LV_LABEL_LONG_DOT',
-  SCROLL: 'LV_LABEL_LONG_SCROLL',
-  SCROLL_CIRCULAR: 'LV_LABEL_LONG_SCROLL_CIRCULAR',
-  CLIP: 'LV_LABEL_LONG_CLIP',
+  WRAP: 'LV_LABEL_LONG_MODE_WRAP',
+  DOT: 'LV_LABEL_LONG_MODE_DOTS',
+  SCROLL: 'LV_LABEL_LONG_MODE_SCROLL',
+  SCROLL_CIRCULAR: 'LV_LABEL_LONG_MODE_SCROLL_CIRCULAR',
+  CLIP: 'LV_LABEL_LONG_MODE_CLIP',
 };
 
 export const LVGL_DIR = {
@@ -721,7 +721,7 @@ export const widgetDefinitions = {
     },
     properties: [
       ...positionProps,
-      { name: 'src', type: 'string', label: 'Image Source' },
+      { name: 'src', type: 'image', label: 'Image' },
       { name: 'fit', type: 'select', label: 'Object Fit', options: ['contain', 'cover', 'fill'] },
       { name: 'bgColor', type: 'color', label: 'Background Color' },
       { name: 'rotation', type: 'number', label: 'Rotation (0.1 deg)' },
@@ -749,7 +749,7 @@ export const widgetDefinitions = {
     },
     properties: [
       ...positionProps,
-      { name: 'src', type: 'string', label: 'Image Source' },
+      { name: 'src', type: 'image', label: 'Image' },
       { name: 'text', type: 'string', label: 'Text' },
       { name: 'bgColor', type: 'color', label: 'Background Color' },
       { name: 'textColor', type: 'color', label: 'Text Color' },
@@ -1027,9 +1027,11 @@ export function createWidget(type, id, props = {}) {
     id,
     type,
     name: `${definition.name}_${id.slice(-4)}`,
+    parentId: null,
     props: { ...definition.defaultProps, ...props },
     events: [],
-    children: [],
+    animations: [],
+    customStyles: {},
   };
 }
 

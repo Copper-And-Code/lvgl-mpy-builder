@@ -25,8 +25,10 @@ This demonstrates how AI-assisted development can enable developers to build sop
 - **Media**: Image, Image Button
 
 ### 📤 Code Generation
-- **C Generator**: Generates optimized C code for LVGL
-- **MicroPython Generator**: Generates compatible MicroPython code
+- **C Generator**: targets **LVGL 9.6** and uses no deprecated API (it also builds with `LV_DISABLE_API_MAPPING`, ready for LVGL 10)
+- **MicroPython Generator**: targets the official **lv_micropython** firmware (MicroPython 1.24.1 with LVGL 9.3)
+- **Verified output**: CI compiles the generated C against the LVGL 9.6 headers and runs the generated MicroPython on the lv_micropython firmware (see `scripts/lvgl-api/README.md`)
+- **Widget handles**: every widget is reachable from application code (`ui_<name>` in C, `objects["<name>"]` in MicroPython)
 - **Customizable Templates**: External template files that can be modified
 - **Export**: Export directly to file or copy to clipboard
 
@@ -40,58 +42,69 @@ This demonstrates how AI-assisted development can enable developers to build sop
 ```
 lvgl-editor/
 ├── src/
-│   ├── main/              # Electron main process
-│   │   ├── main.js
-│   │   └── preload.js
-│   ├── core/              # Core engine
-│   │   ├── widgetDefinitions.js
-│   │   └── store.js       # Zustand state management
-│   ├── generators/        # Code generators
-│   │   ├── cGenerator.js
-│   │   └── micropythonGenerator.js
-│   ├── components/        # React components
-│   │   ├── Canvas.jsx
-│   │   ├── WidgetRenderer.jsx
-│   │   ├── WidgetPalette.jsx
-│   │   ├── PropertiesPanel.jsx
-│   │   ├── Toolbar.jsx
-│   │   └── CodeExportModal.jsx
-│   └── styles/            # CSS styles
-├── public/                # Static assets
-└── package.json
+│   ├── main/                  # Electron main process
+│   │   ├── main.js            # window, menu, IPC
+│   │   ├── preload.js         # API exposed to the renderer
+│   │   ├── templateStore.js   # bundled and customized code templates
+│   │   └── templateRenderer.js # renders the templates (Handlebars)
+│   ├── core/                  # editor model
+│   │   ├── store.js           # Zustand store (pages are the source of truth, per-page undo)
+│   │   ├── projectModel.js    # hierarchy and LVGL-like coordinates
+│   │   ├── projectValidation.js
+│   │   ├── dialogs.js         # in-app dialogs and notifications
+│   │   └── widgetDefinitions.js
+│   ├── generators/            # code generation
+│   │   ├── core/              # widgets described once, emitted as C or MicroPython
+│   │   └── templateLoader.js
+│   ├── components/            # React components
+│   └── styles/
+├── templates/{unix,stm32,esp32}/ # c_template.hbs, micropython_template.hbs
+├── tests/                     # Vitest unit tests, toolchain tests, e2e (Playwright + Electron)
+└── scripts/lvgl-api/          # extraction of the LVGL API reference data
 ```
 
 ## Technology Stack
 
-- **Frontend**: React 18 + Vite
-- **Desktop**: Electron
-- **Canvas**: React-Konva (based on Konva.js)
-- **State Management**: Zustand
-- **Code Generation**: Template-based generators
-- **Styling**: CSS modules
+- **Desktop**: Electron 45 (sandboxed renderer, strict Content Security Policy), packaged with Electron Forge 8
+- **Frontend**: React 19 + Vite 8
+- **Canvas**: react-konva 19 (Konva 10)
+- **State Management**: Zustand 5
+- **Code Generation**: one widget description emitted as C or MicroPython, rendered with Handlebars templates in the main process
+- **Tests**: Vitest 5, Playwright (driving Electron), gcc and the lv_micropython firmware in CI
+- **Linting**: ESLint 10
 
 ## Installation
 
 ### Prerequisites
-- Node.js 18 or higher
-- npm or yarn
+- Node.js 22.12 or higher
+- npm
 
 ### Setup
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/lvgl-editor.git
-cd lvgl-editor
+git clone https://github.com/Copper-And-Code/lvgl-mpy-builder.git
+cd lvgl-mpy-builder
 
-# Install dependencies
+# Install dependencies and download the Electron binary
 npm install
+node node_modules/electron/install.js
 
-# Start in development mode (browser only)
-npm run dev:renderer
-
-# To test the complete Electron app (requires additional setup)
+# Development: Vite dev server + Electron
 npm run dev
+
+# Development in the browser only (no file access, templates cannot be customized)
+npm run dev:renderer
 ```
+
+### Scripts
+
+| Command | Description |
+|---|---|
+| `npm test` | Unit tests (Vitest) |
+| `npm run test:e2e` | Builds the app and runs the end-to-end test in Electron (on Linux without a display: `xvfb-run -a npm run test:e2e`) |
+| `npm run lint` | ESLint |
+| `npm run package` / `npm run make` | Packaged app / zip archive in `out/` |
 
 ## Usage
 
@@ -121,46 +134,70 @@ npm run dev
 
 ## Generated Code Example
 
-### C
+A page with one button and a click handler (excerpt):
+
+### C (LVGL 9.6)
 ```c
 #include "lvgl.h"
 
-void my_ui_create(lv_obj_t *parent)
+/* Fonts used: enable LV_FONT_MONTSERRAT_16 in lv_conf.h */
+
+/* Widget handles (use `extern lv_obj_t * ui_<name>;` to access them from other files) */
+lv_obj_t * ui_button_1;
+
+static void on_click(lv_event_t *e);
+
+void my_ui_create_main(lv_obj_t *parent)
 {
     if (parent == NULL) {
-        parent = lv_scr_act();
+        parent = lv_screen_active();
     }
 
-    /* Create button: button_1 */
-    lv_obj_t *button_1 = lv_btn_create(parent);
-    lv_obj_set_pos(button_1, 100, 50);
-    lv_obj_set_size(button_1, 120, 40);
-    lv_obj_set_style_bg_color(button_1, lv_color_make(33, 150, 243), LV_PART_MAIN);
-
-    lv_obj_t *button_1_label = lv_label_create(button_1);
+    /* button: button_1 */
+    ui_button_1 = lv_button_create(parent);
+    lv_obj_set_pos(ui_button_1, 100, 50);
+    lv_obj_set_size(ui_button_1, 120, 40);
+    lv_obj_set_style_bg_color(ui_button_1, lv_color_hex(0x2196F3), LV_PART_MAIN);
+    lv_obj_set_style_radius(ui_button_1, 5, LV_PART_MAIN);
+    lv_obj_t * button_1_label = lv_label_create(ui_button_1);
     lv_label_set_text(button_1_label, "Click Me");
     lv_obj_center(button_1_label);
+    lv_obj_set_style_text_color(button_1_label, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+    lv_obj_set_style_text_font(button_1_label, &lv_font_montserrat_16, LV_PART_MAIN);
+    lv_obj_add_event_cb(ui_button_1, on_click, LV_EVENT_CLICKED, NULL);
 }
 ```
 
-### MicroPython
+### MicroPython (lv_micropython)
 ```python
 import lvgl as lv
 
-def my_ui_create(parent=None):
-    if parent is None:
-        parent = lv.scr_act()
+# Created widgets, by name (e.g. objects["ok_button"])
+objects = {}
 
-    # Create button: button_1
-    button_1 = lv.btn(parent)
+def my_ui_create_main(parent=None):
+    if parent is None:
+        parent = lv.screen_active()
+
+    # button: button_1
+    button_1 = lv.button(parent)
+    objects["button_1"] = button_1
     button_1.set_pos(100, 50)
     button_1.set_size(120, 40)
-    button_1.set_style_bg_color(lv.color_make(0x21, 0x96, 0xF3), lv.PART.MAIN)
-
+    button_1.set_style_bg_color(lv.color_hex(0x2196F3), lv.PART.MAIN)
+    button_1.set_style_radius(5, lv.PART.MAIN)
     button_1_label = lv.label(button_1)
     button_1_label.set_text("Click Me")
     button_1_label.center()
+    button_1_label.set_style_text_color(lv.color_hex(0xFFFFFF), lv.PART.MAIN)
+    button_1_label.set_style_text_font(lv.font_montserrat_16, lv.PART.MAIN)
+    button_1.add_event_cb(on_click, lv.EVENT.CLICKED, None)
 ```
+
+Notes on the targets:
+- LVGL 9.6 deprecates `lv_list`, `lv_win` and `lv_menu`: the generator builds these widgets from base widgets in a flex column, as LVGL recommends.
+- `lv.spinner` is not exported by the lv_micropython binding: in MicroPython the spinner is an arc rotated by an endless animation.
+- The default lv_micropython firmware includes the Montserrat fonts 14, 16 and 24 only: MicroPython font sizes are mapped to the closest of these.
 
 ## Roadmap
 
@@ -183,11 +220,11 @@ def my_ui_create(parent=None):
 - [x] Asset management (images, fonts)
 - [ ] Preview on real device
 
-### v2.0 ✅
-- [x] Collaborative editing
+### v2.0
 - [x] Component library
-- [x] Plugin system
-- [x] Cloud sync
+- [ ] Plugin system (experimental, external plugins disabled)
+- [ ] Cloud sync (experimental, local storage only)
+- [ ] Collaborative editing (experimental, simulated)
 
 ### v2.1 ✅
 - [x] Advanced widget library (Chart, Roller, Dropdown, Image, Image Button)
@@ -224,72 +261,16 @@ The component library allows you to save and reuse groups of widgets as custom c
 3. Click "Save Component" and enter the details
 4. To insert a component, click "+" next to the desired component
 
-### 🔌 Plugin System
-Extensible system for loading external plugins that add new functionality:
+### 🧪 Experimental features: plugins, cloud sync, collaborative editing
+These three features are **incomplete**: they are disabled by default and can be enabled in **Settings → Experimental features**. When enabled, their panels show an "Experimental" badge and their current limitations.
 
-- **Plugin Loading**: Load plugins from URL or JavaScript code
-- **Custom Widgets**: Plugins can add new widget types
-- **Custom Generators**: Add support for new output languages
-- **Hook System**: Plugins can intercept editor events
-- **Plugin Management**: Enable/disable plugins dynamically
+| Feature | Current state |
+|---|---|
+| 🔌 Plugins | The plugin API exists (hooks, custom widgets, generators), but loading external plugins (URL, file, pasted code) is **disabled**: the code would run unsandboxed in the editor. There are no built-in plugins yet. |
+| ☁️ Cloud sync | One provider only: projects are saved in the app's local storage, **on this computer**. No online service, no automatic sync. |
+| 👥 Collaborative editing | **Simulated**: there is no collaboration server and no changes are exchanged with other users. |
 
-**Plugin Structure:**
-```javascript
-module.exports.default = {
-  id: 'my-plugin',
-  name: 'My Plugin',
-  version: '1.0.0',
-  description: 'Plugin description',
-
-  initialize() {
-    // Setup code
-  },
-
-  hooks: {
-    'widget:created': (widget) => {
-      // Called when a widget is created
-      return widget;
-    }
-  },
-
-  widgets: [
-    // Custom widget definitions
-  ],
-
-  generators: [
-    // Custom code generators
-  ]
-};
-```
-
-### ☁️ Cloud Sync
-Sync your projects with the cloud to access them from any device:
-
-- **Multiple Providers**: Support for different cloud providers (Local Storage included)
-- **Auto-Sync**: Automatic synchronization every 5 minutes (optional)
-- **Project Management**: List, load and delete projects from the cloud
-- **Automatic Backup**: Auto-save to never lose your work
-
-**Available Providers:**
-- Local Storage (demo/offline)
-- Custom providers via API
-
-### 👥 Collaborative Editing
-Work on projects in real-time with other users:
-
-- **Multi-User Sessions**: Create or join collaborative sessions
-- **Real-Time Sync**: See other users' changes in real-time
-- **User Awareness**: View who is connected with distinctive colors
-- **Cursor Tracking**: See where other users are working
-- **Conflict Resolution**: Automatic conflict management system
-
-**Getting started:**
-1. Click the "Collaboration" button (bottom right)
-2. Choose "Join Session"
-3. Enter server URL and session ID (or generate a new one)
-4. Share the session ID with collaborators
-
-**Note:** Real-time collaboration requires a WebSocket server. The current version includes a demo implementation for local development.
+Making them real requires a plugin sandbox, an online storage provider and a collaboration server (e.g. Yjs over WebSocket); see `docs/CODE_REVIEW_PLAN.md`, phase 4.
 
 ## v2.1 Features
 
@@ -338,16 +319,10 @@ Standard dropdown selection menus:
 
 #### Image Widget
 Display images in your interface:
-- **Image Source**: Support for image URLs
-- **Fit Modes**: Contain, cover, or fill
-- **Placeholder**: Visual placeholder when no image is set
-- **Background Color**: Configurable background
+- **Image**: the name of a PNG or JPEG uploaded in the Asset Manager (shown on the canvas and embedded in the generated code), or a file path read through an LVGL file system driver (e.g. `A:images/logo.png`)
+- **Rotation, zoom, pivot, antialiasing**
 
-**Properties:**
-- Image source URL
-- Object fit mode
-- Background color
-- Width/height
+Embedded images keep their original PNG/JPEG bytes in an `lv_image_dsc_t` and are decoded by LVGL at run time: in C enable `LV_USE_LODEPNG` (PNG) or `LV_USE_TJPGD` and `LV_USE_FS_MEMFS` (JPEG) in `lv_conf.h`; the default lv_micropython firmware already includes both decoders.
 
 #### Image Button Widget
 Combine images with interactive buttons:
@@ -357,7 +332,7 @@ Combine images with interactive buttons:
 - **Click Events**: Full event support
 
 **Properties:**
-- Image source URL
+- Image (as for the Image widget)
 - Button text
 - Background and text colors
 - Corner radius
@@ -481,47 +456,30 @@ Version 2.2 introduces a powerful template system that allows you to fully custo
 
 #### Template Files Location (Updated in v2.3)
 
-Templates are now organized by target architecture in subdirectories:
+Templates are organized by target architecture in subdirectories:
 - `templates/unix/` - Generic Unix/Linux templates
 - `templates/stm32/` - STM32 microcontroller templates
 - `templates/esp32/` - ESP32 microcontroller templates
 
 Each architecture directory contains:
-- `c_template.hbs` - C code template (single page)
-- `micropython_template.hbs` - MicroPython template (single page)
-- `c_multipage_template.hbs` - C code template (multi-page)
-- `micropython_multipage_template.hbs` - MicroPython template (multi-page)
+- `c_template.hbs` - C code template
+- `micropython_template.hbs` - MicroPython template
+
+Every project has at least one page; the same templates handle any number of pages.
 
 #### How to Customize Templates
 
-1. Navigate to the `templates/{architecture}/` folder in your installation directory
-2. Open any `.hbs` (Handlebars) template file in a text editor
-3. Modify the template structure while preserving the variable placeholders
-4. Save the file - changes will be used in the next code generation for that architecture
+The bundled templates are read-only. A customized copy is saved in the application's
+data directory (`<userData>/templates/{architecture}/`) and takes precedence over the
+bundled one; templates are loaded at code generation time.
 
 #### Template Variables
 
 Templates use Handlebars syntax with the following variables:
 
-**Common Variables:**
 - `{{projectName}}` - Name of the project
 - `{{generatedDate}}` - ISO timestamp of code generation
-- `{{canvasWidth}}`, `{{canvasHeight}}` - Canvas dimensions
-- `{{functionName}}` - Sanitized function name
-- `{{hasEventCallbacks}}` - Boolean for event callbacks presence
-
-**Widget Data:**
-- `{{#each widgets}}...{{/each}}` - Loop through all widgets
-- `{{{this}}}` - Raw widget code (triple braces preserve formatting)
-
-**Event Callbacks:**
-- `{{#each eventCallbacks}}...{{/each}}` - Loop through event callbacks
-- `{{this.name}}` - Callback function name
-- `{{this.type}}` - Event type constant
-- `{{this.code}}` - User-defined callback code
-- `{{this.eventType}}` - Event type for MicroPython (without LV_EVENT_ prefix)
-
-**Multi-Page Variables:**
+- `{{declarations}}` - File-scope declarations: widget handles, fonts and images in use, helper functions (C); the `objects` dictionary (MicroPython)
 - `{{pageCount}}` - Total number of pages
 - `{{lastPageIndex}}` - Index of last page (pageCount - 1)
 - `{{baseName}}` - Base name for functions
@@ -530,7 +488,11 @@ Templates use Handlebars syntax with the following variables:
   - `{{this.functionName}}` - Page function name
   - `{{this.width}}`, `{{this.height}}` - Page dimensions
   - `{{this.widgetCount}}` - Number of widgets in page
-  - `{{this.widgets}}` - Widget code array
+  - `{{#each this.widgets}}{{this}}{{/each}}` - Code of each widget
+- `{{hasEventCallbacks}}` - Whether there are event handlers
+- `{{#each eventCallbacks}}...{{/each}}` - Event handlers
+  - `{{this.name}}` - Handler function name
+  - `{{indent this.body 4}}` - Handler body (one branch per event code), re-indented by 4 spaces
 
 #### Example Customizations
 
@@ -538,15 +500,9 @@ Templates use Handlebars syntax with the following variables:
 ```handlebars
 /*
  * Company: My Company
- * Author: {{author}}
  * Project: {{projectName}}
  * Generated: {{generatedDate}}
  */
-```
-
-**Change function naming:**
-```handlebars
-void create_{{projectName}}_ui(lv_obj_t *parent)
 ```
 
 **Add custom includes:**
@@ -561,14 +517,12 @@ You can reorganize the generated code structure, add comments, change indentatio
 
 #### Reset to Defaults
 
-If you need to reset a template to its original state, simply delete the template file. The system will automatically use the built-in default template.
+Delete the customized copy in the application's data directory: the bundled template is used again.
 
 #### Notes
 
-- Templates are loaded at code generation time
-- Invalid templates will fall back to defaults with a warning
-- Use triple braces `{{{variable}}}` for raw output (preserves formatting)
-- Use double braces `{{variable}}` for escaped output
+- The output is source code, so values are never HTML-escaped: `{{variable}}` and `{{{variable}}}` produce the same text
+- The `indent` helper re-indents multi-line text, which keeps user code valid inside Python blocks
 - Handlebars helpers like `{{#if}}`, `{{#each}}`, `{{#unless}}` are supported
 
 ## v2.3 Features
@@ -611,19 +565,13 @@ Your architecture selection is **automatically saved** with the project and will
 templates/
 ├── unix/
 │   ├── c_template.hbs
-│   ├── c_multipage_template.hbs
-│   ├── micropython_template.hbs
-│   └── micropython_multipage_template.hbs
+│   └── micropython_template.hbs
 ├── stm32/
 │   ├── c_template.hbs
-│   ├── c_multipage_template.hbs
-│   ├── micropython_template.hbs
-│   └── micropython_multipage_template.hbs
+│   └── micropython_template.hbs
 └── esp32/
     ├── c_template.hbs
-    ├── c_multipage_template.hbs
-    ├── micropython_template.hbs
-    └── micropython_multipage_template.hbs
+    └── micropython_template.hbs
 ```
 
 #### Adding Custom Architectures
@@ -653,6 +601,8 @@ You can easily add support for additional architectures:
      MY_CUSTOM: 'my_custom_arch',  // Add your architecture
    };
    ```
+
+   Add it also to the `ARCHITECTURES` whitelist in `src/main/templateStore.js`: the Electron main process only reads and writes templates of listed architectures.
 
 5. **Add to Selector** (in `getAvailableArchitectures()`):
    ```javascript

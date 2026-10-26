@@ -1,24 +1,35 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { Stage, Layer, Rect, Text, Group, Line } from 'react-konva';
-import useStore from '../core/store';
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import { Stage, Layer, Rect, Line } from 'react-konva';
+import { useShallow } from 'zustand/react/shallow';
+import useStore, { selectCanvasSize, selectWidgets } from '../core/store';
+import { childrenByParent as groupByParent, findWidget } from '../core/projectModel';
 import WidgetRenderer from './WidgetRenderer';
+
+const BACKGROUND = 'canvas-background';
 
 const Canvas = () => {
   const stageRef = useRef();
   const containerRef = useRef();
-  const {
-    widgets,
-    selectedWidgetId,
-    canvasSize,
-    zoom,
-    gridEnabled,
-    snapToGrid,
-    gridSize,
-    selectWidget,
-    deselectWidget,
-    updateWidget,
-    setZoom,
-  } = useStore();
+  const widgets = useStore(selectWidgets);
+  const canvasSize = useStore(selectCanvasSize);
+  const { selectedWidgetId, zoom, gridEnabled, snapToGrid, gridSize } = useStore(
+    useShallow((state) => ({
+      selectedWidgetId: state.selectedWidgetId,
+      zoom: state.zoom,
+      gridEnabled: state.gridEnabled,
+      snapToGrid: state.snapToGrid,
+      gridSize: state.gridSize,
+    }))
+  );
+  const { selectWidget, deselectWidget, moveWidget, setZoom } = useStore(
+    useShallow((state) => ({
+      selectWidget: state.selectWidget,
+      deselectWidget: state.deselectWidget,
+      moveWidget: state.moveWidget,
+      setZoom: state.setZoom,
+    }))
+  );
+  const childrenByParent = useMemo(() => groupByParent(widgets), [widgets]);
 
   const [isDragging, setIsDragging] = useState(false);
   const [containerSize, setContainerSize] = useState({ width: 800, height: 600 });
@@ -48,12 +59,14 @@ const Canvas = () => {
   }, [containerSize, canvasSize, setZoom]);
 
   const handleStageClick = (e) => {
-    if (e.target === e.target.getStage()) {
+    if (e.target === e.target.getStage() || e.target.name() === BACKGROUND) {
       deselectWidget();
     }
   };
 
+  // Positions are relative to the parent (the screen for top-level widgets)
   const handleWidgetDragEnd = (id, e) => {
+    const widget = findWidget(widgets, id);
     let x = e.target.x();
     let y = e.target.y();
 
@@ -62,10 +75,15 @@ const Canvas = () => {
       y = Math.round(y / gridSize) * gridSize;
     }
 
-    x = Math.max(0, Math.min(x, canvasSize.width));
-    y = Math.max(0, Math.min(y, canvasSize.height));
+    // Top-level widgets stay on the display; children may overflow (LVGL scrolls them)
+    if (widget && !widget.parentId) {
+      x = Math.max(0, Math.min(x, canvasSize.width - (widget.props.width ?? 0)));
+      y = Math.max(0, Math.min(y, canvasSize.height - (widget.props.height ?? 0)));
+    }
 
-    updateWidget(id, { x, y });
+    // Keep the node where the store puts it, even when the value does not change
+    e.target.position({ x, y });
+    moveWidget(id, x, y);
     setIsDragging(false);
   };
 
@@ -139,20 +157,21 @@ const Canvas = () => {
               width={canvasSize.width}
               height={canvasSize.height}
               fill="#ffffff"
-              listening={true}
+              name={BACKGROUND}
             />
 
             {/* Grid */}
             {renderGrid()}
 
             {/* Widgets */}
-            {widgets.map((widget) => (
+            {(childrenByParent.get(null) ?? []).map((widget) => (
               <WidgetRenderer
                 key={widget.id}
                 widget={widget}
-                isSelected={selectedWidgetId === widget.id}
-                onSelect={() => selectWidget(widget.id)}
-                onDragEnd={(e) => handleWidgetDragEnd(widget.id, e)}
+                childrenByParent={childrenByParent}
+                selectedWidgetId={selectedWidgetId}
+                onSelect={selectWidget}
+                onDragEnd={handleWidgetDragEnd}
                 onDragStart={() => setIsDragging(true)}
               />
             ))}

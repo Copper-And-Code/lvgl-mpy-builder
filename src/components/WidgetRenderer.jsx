@@ -1,8 +1,27 @@
 import React from 'react';
-import { Group, Rect, Text, Circle, Line, Arc } from 'react-konva';
+import { Group, Rect, Text, Circle, Line, Image } from 'react-konva';
+import { previewProps } from '../core/previewProps';
+import { contentOffset } from '../core/projectModel';
+import useAssetImage from './useAssetImage';
 
-const WidgetRenderer = ({ widget, isSelected, onSelect, onDragEnd, onDragStart }) => {
-  const { id, type, props } = widget;
+/**
+ * Draws a widget and, nested inside it, its children. As in LVGL, children
+ * are positioned relative to the parent's content area (inside border and
+ * padding) and clipped to the parent.
+ */
+const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, onDragEnd, onDragStart }) => {
+  const { type } = widget;
+  const props = previewProps(widget);
+  const isSelected = selectedWidgetId === widget.id;
+  const children = childrenByParent.get(widget.id) ?? [];
+  // Uploaded image shown by image and image button widgets (null if none)
+  const assetImage = useAssetImage(type === 'image' || type === 'imagebutton' ? props.src : null);
+  const imageScale = type === 'image' && props.zoom ? props.zoom / 256 : 1;
+  const imageContent = assetImage && (
+    <Group clipX={0} clipY={0} clipWidth={props.width} clipHeight={props.height} listening={false}>
+      <Image image={assetImage} width={assetImage.width * imageScale} height={assetImage.height * imageScale} />
+    </Group>
+  );
 
   const renderWidget = () => {
     switch (type) {
@@ -299,16 +318,18 @@ const WidgetRenderer = ({ widget, isSelected, onSelect, onDragEnd, onDragStart }
               strokeWidth={1}
               cornerRadius={3}
             />
-            <Text
-              text={props.src ? '🖼️' : 'No Image'}
-              width={props.width}
-              height={props.height}
-              align="center"
-              verticalAlign="middle"
-              fill={props.src ? undefined : '#999999'}
-              fontSize={props.src ? Math.min(props.width, props.height) / 2 : 12}
-              fontFamily="Arial"
-            />
+            {imageContent || (
+              <Text
+                text={props.src ? '🖼️' : 'No Image'}
+                width={props.width}
+                height={props.height}
+                align="center"
+                verticalAlign="middle"
+                fill={props.src ? undefined : '#999999'}
+                fontSize={props.src ? Math.min(props.width, props.height) / 2 : 12}
+                fontFamily="Arial"
+              />
+            )}
           </>
         );
 
@@ -449,7 +470,7 @@ const WidgetRenderer = ({ widget, isSelected, onSelect, onDragEnd, onDragStart }
               shadowBlur={isSelected ? 10 : 0}
               shadowColor="blue"
             />
-            {props.src ? (
+            {imageContent || (props.src ? (
               <Text
                 text="🖼️"
                 width={props.width}
@@ -467,7 +488,7 @@ const WidgetRenderer = ({ widget, isSelected, onSelect, onDragEnd, onDragStart }
                 fill="rgba(255, 255, 255, 0.3)"
                 cornerRadius={3}
               />
-            )}
+            ))}
             <Text
               text={props.text || 'Button'}
               y={props.height - 35}
@@ -1005,19 +1026,51 @@ const WidgetRenderer = ({ widget, isSelected, onSelect, onDragEnd, onDragStart }
     }
   };
 
+  // Drag and click events bubble up to the parents' groups: handle them only
+  // on the widget they belong to
+  const own = (handler) => (e) => {
+    if (e.target !== e.currentTarget && e.type.startsWith('drag')) return;
+    e.cancelBubble = true;
+    handler(widget.id, e);
+  };
+  const offset = contentOffset(widget);
+
   return (
     <Group
       x={props.x}
       y={props.y}
       draggable
-      onDragEnd={onDragEnd}
-      onDragStart={onDragStart}
-      onClick={onSelect}
-      onTap={onSelect}
+      onDragEnd={own(onDragEnd)}
+      onDragStart={own(onDragStart)}
+      onClick={own(onSelect)}
+      onTap={own(onSelect)}
       opacity={props.opacity !== undefined ? props.opacity / 255 : 1}
       visible={!props.hidden}
     >
       {renderWidget()}
+
+      {children.length > 0 && (
+        <Group
+          x={offset.x}
+          y={offset.y}
+          clipX={-offset.x}
+          clipY={-offset.y}
+          clipWidth={props.width}
+          clipHeight={props.height}
+        >
+          {children.map((child) => (
+            <WidgetRenderer
+              key={child.id}
+              widget={child}
+              childrenByParent={childrenByParent}
+              selectedWidgetId={selectedWidgetId}
+              onSelect={onSelect}
+              onDragEnd={onDragEnd}
+              onDragStart={onDragStart}
+            />
+          ))}
+        </Group>
+      )}
 
       {/* Selection border */}
       {isSelected && (
