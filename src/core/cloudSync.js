@@ -328,7 +328,7 @@ export const exampleCloudProvider = {
   },
 
   // Load project from cloud
-  async loadProject(projectId) {
+  async loadProject(_projectId) {
     // const response = await fetch(`https://api.example.com/projects/${projectId}`);
     // return response.json();
     return {};
@@ -342,7 +342,7 @@ export const exampleCloudProvider = {
   },
 
   // Delete project
-  async deleteProject(projectId) {
+  async deleteProject(_projectId) {
     // await fetch(`https://api.example.com/projects/${projectId}`, {
     //   method: 'DELETE',
     // });

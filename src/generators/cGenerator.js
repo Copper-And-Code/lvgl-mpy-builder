@@ -1,17 +1,6 @@
 // C Code Generator for LVGL 9.3
 import { loadTemplate, DEFAULT_ARCHITECTURE } from './templateLoader';
 
-function hexToRgb(hex) {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result
-    ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16),
-      }
-    : { r: 0, g: 0, b: 0 };
-}
-
 function colorToLvglHex(color) {
   const hex = color.replace('#', '');
   return `lv_color_hex(0x${hex})`;
@@ -414,7 +403,6 @@ function generateWidgetCode(widget, widgets, indent = '    ') {
       lines.push(`${indent}lv_obj_set_pos(${varName}, ${props.x}, ${props.y});`);
       lines.push(`${indent}lv_obj_set_size(${varName}, ${props.width}, ${props.height});`);
       const cols = props.cols || 3;
-      const rows = props.rows || 4;
       lines.push(`${indent}lv_table_set_column_count(${varName}, ${cols});`);
       if (props.colWidths) {
         props.colWidths.split(',').forEach((w, i) => {

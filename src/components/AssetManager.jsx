@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import useStore from '../core/store';
 import { Image, Type, Upload, Trash2, X, FileImage, FileText } from 'lucide-react';
 import '../styles/AssetManager.css';
@@ -109,7 +109,7 @@ function AssetManager({ onClose }) {
               <FileText size={48} />
               <p>No {activeTab} uploaded yet</p>
               <p className="empty-hint">
-                Click "Upload" to add {activeTab === 'images' ? 'images' : 'fonts'} to your project
+                Click “Upload” to add {activeTab === 'images' ? 'images' : 'fonts'} to your project
               </p>
             </div>
           ) : (

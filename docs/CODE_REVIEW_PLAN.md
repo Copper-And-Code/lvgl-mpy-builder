@@ -200,6 +200,27 @@ L'ordinamento in `cGenerator.js:713,780` e `micropythonGenerator.js:702,773` met
 4. Correggere i 6 errori di lint.
 5. Introdurre **Vitest** con i primi test di regressione: store (i casi riprodotti in questa review) e generatori (snapshot di un progetto di riferimento).
 
+#### Stato della fase 0: completata
+- `.gitignore` esclude ora `node_modules/`, `dist/`, `out/`, `coverage/`, log e `.env*`. Aggiunto `package-lock.json`.
+- **P0-2:** `getProjectData` legge lo stato *dopo* `savePageWidgets()`. `addPage` salva la pagina corrente e parte vuota. `loadProject` carica i widget della pagina corrente salvata, non sempre della prima.
+- **P0-1:** template compilati con `noEscape` e helper `{{indent this.code 8}}` in tutti i 12 `.hbs` e nei template di default. Nei template MicroPython è stato aggiunto `pass` dopo il codice dell'evento, così anche un handler vuoto o fatto solo di commenti è Python valido.
+- **P0-3:**
+  - IPC `read-file`/`write-file` sostituiti da `read-template`/`write-template` (`src/main/templateStore.js`), con whitelist di architetture e nomi, controllo del percorso e limite di 1 MiB. I template personalizzati vanno in `userData`.
+  - Caricamento di plugin esterni disattivato (`EXTERNAL_PLUGINS_ENABLED = false`).
+  - `sandbox: true`, `setWindowOpenHandler` e blocco di `will-navigate`.
+  - CSP di produzione senza `'unsafe-inline'` per gli script, applicata anche come `<meta>` nella build (con `file://` gli header di `onHeadersReceived` non valgono).
+- **Lint:** `npm run lint` passa con 0 errori e 0 warning.
+- **Test:** Vitest 2 con `npm test`, 44 test.
+  - Store: i 5 casi di P0-2.
+  - Generatori: niente escape HTML e sintassi Python valida (verificata con `python3 -c ast.parse`) per unix, stm32 ed esp32, sia con i template di default sia con i file `.hbs`, più gli snapshot del progetto di riferimento.
+  - `templateStore`: tentativi di path traversal.
+  - Ho verificato che questi test **falliscono** sul codice precedente.
+
+**Deviazioni dal piano:**
+- `'unsafe-eval'` resta nella CSP, perché `Handlebars.compile()` lo richiede per i template a runtime. Si toglierà precompilando i template (fase 1). Il rischio principale, l'`eval` dei plugin, è comunque eliminato.
+- Le modifiche al processo Electron (`sandbox`, handler di navigazione, IPC) sono verificate solo con `node --check` e con i test di `templateStore`: l'app Electron non è stata avviata, perché questo ambiente non ha un display.
+- Gli snapshot fissano l'output *attuale*, compresi i nomi API sbagliati di P0-4 e P0-5: sono una base di regressione e andranno aggiornati in fase 1.
+
 ### Fase 1 — Nuovo nucleo dei generatori (1–2 settimane)
 Obiettivo: il codice generato **compila e gira**, verificato in CI.
 

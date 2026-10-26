@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Puzzle, Plus, Trash2, Power, PowerOff, Upload, Download } from 'lucide-react';
-import pluginSystem from '../core/pluginSystem';
+import pluginSystem, {
+  EXTERNAL_PLUGINS_ENABLED,
+  EXTERNAL_PLUGINS_DISABLED_MESSAGE,
+} from '../core/pluginSystem';
 import '../styles/PluginManager.css';
 
 export default function PluginManager() {
@@ -124,19 +127,25 @@ export default function PluginManager() {
           </div>
 
           <div className="plugin-manager-toolbar">
-            <button onClick={() => setShowAddDialog(true)} title="Add plugin">
+            <button
+              onClick={() => setShowAddDialog(true)}
+              title={EXTERNAL_PLUGINS_ENABLED ? 'Add plugin' : EXTERNAL_PLUGINS_DISABLED_MESSAGE}
+              disabled={!EXTERNAL_PLUGINS_ENABLED}
+            >
               <Plus size={16} />
               Add Plugin
             </button>
-            <label className="import-button" title="Load from file">
-              <Upload size={16} />
-              <input
-                type="file"
-                accept=".js"
-                onChange={handleLoadFromFile}
-                style={{ display: 'none' }}
-              />
-            </label>
+            {EXTERNAL_PLUGINS_ENABLED && (
+              <label className="import-button" title="Load from file">
+                <Upload size={16} />
+                <input
+                  type="file"
+                  accept=".js"
+                  onChange={handleLoadFromFile}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            )}
             <button onClick={handleExportConfig} title="Export configuration">
               <Download size={16} />
             </button>
@@ -146,7 +155,11 @@ export default function PluginManager() {
             {plugins.length === 0 ? (
               <div className="plugin-empty">
                 <p>No plugins loaded</p>
-                <p>Click "Add Plugin" to get started</p>
+                <p>
+                  {EXTERNAL_PLUGINS_ENABLED
+                    ? 'Click “Add Plugin” to get started'
+                    : EXTERNAL_PLUGINS_DISABLED_MESSAGE}
+                </p>
               </div>
             ) : (
               plugins.map((plugin) => (

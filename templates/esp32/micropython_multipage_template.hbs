@@ -21,7 +21,8 @@ def {{this.name}}(e):
     obj = e.get_target_obj()
 
     if code == lv.EVENT.{{this.eventType}}:
-        {{this.code}}
+        {{indent this.code 8}}
+        pass
 
 {{/each}}
 {{/if}}

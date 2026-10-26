@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Cloud, CloudOff, Upload, Download, RefreshCw, Trash2, Settings } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Cloud, CloudOff, Upload, Download, Trash2 } from 'lucide-react';
 import cloudSync from '../core/cloudSync';
 import useStore from '../core/store';
 import '../styles/CloudSync.css';

@@ -234,6 +234,9 @@ const useStore = create((set, get) => ({
 
   // Page management (v1.2)
   addPage: (name) => {
+    // Persist the page we are leaving, otherwise its widgets leak into the new page
+    get().savePageWidgets();
+
     const id = `page_${uuidv4()}`;
     const currentCanvasSize = get().canvasSize;
     const newPage = {
@@ -246,6 +249,8 @@ const useStore = create((set, get) => ({
     set((state) => ({
       pages: [...state.pages, newPage],
       currentPageId: id,
+      widgets: [],
+      selectedWidgetId: null,
     }));
   },
 
@@ -483,13 +488,16 @@ const useStore = create((set, get) => ({
   loadProject: (projectData) => {
     // Support for v2.0+ multi-page format with component library
     if (projectData.pages) {
-      const firstPage = projectData.pages[0];
+      // Load the widgets of the page that becomes current, so that the next
+      // savePageWidgets() does not overwrite it with another page's widgets
+      const currentPage =
+        projectData.pages.find(p => p.id === projectData.currentPageId) || projectData.pages[0];
       set({
         projectName: projectData.projectName || 'Untitled Project',
         pages: projectData.pages,
-        currentPageId: projectData.currentPageId || firstPage.id,
-        widgets: firstPage.widgets || [],
-        canvasSize: firstPage.canvasSize || { width: 800, height: 480 },
+        currentPageId: currentPage.id,
+        widgets: currentPage.widgets || [],
+        canvasSize: currentPage.canvasSize || { width: 800, height: 480 },
         assets: projectData.assets || { images: [], fonts: [] },
         componentLibrary: projectData.componentLibrary || [],
         selectedWidgetId: null,
@@ -520,9 +528,11 @@ const useStore = create((set, get) => ({
   },
 
   getProjectData: () => {
-    const state = get();
-    // Save current page before export
+    // Save current page before export, then read the updated state:
+    // zustand replaces the state object on set(), so a snapshot taken
+    // before savePageWidgets() would still hold the old pages.
     get().savePageWidgets();
+    const state = get();
 
     return {
       projectName: state.projectName,

@@ -1,4 +1,3 @@
-import React from 'react';
 import useStore from '../core/store';
 import { widgetDefinitions, WIDGET_TYPES } from '../core/widgetDefinitions';
 

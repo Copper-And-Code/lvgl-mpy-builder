@@ -1,5 +1,5 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { Stage, Layer, Rect, Text, Group, Line } from 'react-konva';
+import { useRef, useState, useEffect, useCallback } from 'react';
+import { Stage, Layer, Rect, Line } from 'react-konva';
 import useStore from '../core/store';
 import WidgetRenderer from './WidgetRenderer';
 

@@ -53,3 +53,14 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# Node / Vite / Electron
+node_modules/
+dist/
+out/
+coverage/
+*.log
+npm-debug.log*
+.env
+.env.*
+.vite/

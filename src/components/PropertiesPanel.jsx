@@ -1,4 +1,3 @@
-import React from 'react';
 import useStore from '../core/store';
 import { widgetDefinitions } from '../core/widgetDefinitions';
 import EventEditor from './EventEditor';

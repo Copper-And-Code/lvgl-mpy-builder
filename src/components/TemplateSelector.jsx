@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import useStore from '../core/store';
 import { Layout, X } from 'lucide-react';
 import '../styles/TemplateSelector.css';

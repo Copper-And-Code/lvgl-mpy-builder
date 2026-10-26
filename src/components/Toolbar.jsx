@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import useStore from '../core/store';
 import CodeExportModal from './CodeExportModal';
 import TemplateSelector from './TemplateSelector';

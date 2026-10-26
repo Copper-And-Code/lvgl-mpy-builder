@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import useStore from '../core/store';
 import { generateCCode } from '../generators/cGenerator';
 import { generateMicroPythonCode } from '../generators/micropythonGenerator';

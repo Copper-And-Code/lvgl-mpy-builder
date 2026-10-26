@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, session, Menu, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { readTemplate, writeTemplate } = require('./templateStore');
 
 // Configure Electron flags for better Linux compatibility
 if (process.platform === 'linux') {
@@ -45,7 +46,9 @@ function setupContentSecurityPolicy() {
         ].join('; ')
       : [
           "default-src 'self'",
-          "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+          // 'unsafe-eval' is still required by Handlebars.compile() for
+          // runtime templates; remove it once templates are precompiled
+          "script-src 'self' 'unsafe-eval'",
           "style-src 'self' 'unsafe-inline'",
           "img-src 'self' data: blob:",
           "font-src 'self' data:",
@@ -225,6 +228,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: true,
     },
     title: 'LVGL Visual Editor',
     icon: path.join(__dirname, '../../public/icon.png'),
@@ -237,6 +241,21 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'));
   }
+
+  // Never open new Electron windows; send web links to the system browser
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https:\/\//.test(url)) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
+
+  // The app is a single page: block navigation away from it
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (url !== mainWindow.webContents.getURL()) {
+      event.preventDefault();
+    }
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -326,28 +345,15 @@ ipcMain.handle('export-code', async (event, { code, filename, language }) => {
   }
 });
 
-// IPC Handlers for template file operations
-ipcMain.handle('read-file', async (event, filePath) => {
-  try {
-    const fullPath = path.join(app.getAppPath(), filePath);
-    const data = fs.readFileSync(fullPath, 'utf-8');
-    return data;
-  } catch (error) {
-    throw new Error(`Could not read file ${filePath}: ${error.message}`);
-  }
+// IPC Handlers for code-generation templates (whitelisted names only)
+ipcMain.handle('read-template', async (event, architecture, templateName) => {
+  return readTemplate(
+    { userDir: app.getPath('userData'), bundledDir: app.getAppPath() },
+    architecture,
+    templateName
+  );
 });
 
-ipcMain.handle('write-file', async (event, filePath, content) => {
-  try {
-    const fullPath = path.join(app.getAppPath(), filePath);
-    // Ensure directory exists
-    const dir = path.dirname(fullPath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(fullPath, content, 'utf-8');
-    return true;
-  } catch (error) {
-    throw new Error(`Could not write file ${filePath}: ${error.message}`);
-  }
+ipcMain.handle('write-template', async (event, architecture, templateName, content) => {
+  return writeTemplate(app.getPath('userData'), architecture, templateName, content);
 });

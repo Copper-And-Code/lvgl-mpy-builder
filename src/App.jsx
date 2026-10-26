@@ -1,4 +1,3 @@
-import React from 'react';
 import Toolbar from './components/Toolbar';
 import WidgetPalette from './components/WidgetPalette';
 import HierarchyPanel from './components/HierarchyPanel';

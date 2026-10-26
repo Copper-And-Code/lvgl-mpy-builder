@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import useStore from '../core/store';
 import { Package, Plus, Trash2, Download, Upload, Search, Tag, BookOpen } from 'lucide-react';
 import { componentTemplates, getTemplatesByCategory } from '../core/componentTemplates';
@@ -42,7 +42,6 @@ export default function ComponentLibrary() {
 
   const handleInsertTemplate = (template) => {
     // Insert template directly by adding widgets to canvas with new IDs
-    const widgets = useStore.getState().widgets;
     const addWidget = useStore.getState().addWidget;
 
     template.widgets.forEach((widget, index) => {
@@ -272,7 +271,7 @@ export default function ComponentLibrary() {
               filteredComponents.length === 0 ? (
                 <div className="component-empty">
                   <p>No components yet</p>
-                  <p>Select a widget and click "Save Component"</p>
+                  <p>Select a widget and click “Save Component”</p>
                 </div>
               ) : (
                 filteredComponents.map((component) => (

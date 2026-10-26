@@ -27,6 +27,8 @@ contextBridge.exposeInMainWorld('electron', {
 });
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  readFile: (filePath) => ipcRenderer.invoke('read-file', filePath),
-  writeFile: (filePath, content) => ipcRenderer.invoke('write-file', filePath, content),
+  readTemplate: (architecture, templateName) =>
+    ipcRenderer.invoke('read-template', architecture, templateName),
+  writeTemplate: (architecture, templateName, content) =>
+    ipcRenderer.invoke('write-template', architecture, templateName, content),
 });

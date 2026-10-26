@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Users, UserPlus, Link, Unlink, Circle } from 'lucide-react';
 import collaboration from '../core/collaboration';
 import '../styles/CollaborationPanel.css';

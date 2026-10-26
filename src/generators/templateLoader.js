@@ -3,7 +3,31 @@
 // Supports multi-architecture templates (unix, stm32, esp32, rp2040, nrf52, etc.)
 // Updated for LVGL 9.3
 
-import Handlebars from 'handlebars';
+import HandlebarsBase from 'handlebars';
+
+// Isolated Handlebars environment for code generation
+const Handlebars = HandlebarsBase.create();
+
+/**
+ * Re-indent multi-line text: every line after the first is prefixed with
+ * `spaces` spaces, so user code placed inside a block keeps a valid
+ * indentation (required by Python, cosmetic in C).
+ */
+export function indentText(text, spaces) {
+  const pad = ' '.repeat(Number.isInteger(spaces) ? spaces : 0);
+  return String(text ?? '')
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((line, i) => (i === 0 || line.trim() === '' ? line.trimEnd() : pad + line))
+    .join('\n');
+}
+
+Handlebars.registerHelper('indent', (text, spaces) => indentText(text, spaces));
+
+// Template file access is only available inside Electron (see preload.js)
+function getElectronAPI() {
+  return typeof window !== 'undefined' ? window.electronAPI : undefined;
+}
 
 // Supported architectures
 export const ARCHITECTURES = {
@@ -57,7 +81,7 @@ static void {{this.name}}(lv_event_t *e)
     lv_obj_t *obj = lv_event_get_target_obj(e);
 
     if (code == {{this.type}}) {
-        {{this.code}}
+        {{indent this.code 8}}
     }
 }
 
@@ -89,7 +113,8 @@ def {{this.name}}(e):
     obj = e.get_target_obj()
 
     if code == lv.EVENT.{{this.eventType}}:
-        {{this.code}}
+        {{indent this.code 8}}
+        pass
 
 {{/each}}
 {{/if}}
@@ -148,7 +173,7 @@ static void {{this.name}}(lv_event_t *e)
     lv_obj_t *obj = lv_event_get_target_obj(e);
 
     if (code == {{this.type}}) {
-        {{this.code}}
+        {{indent this.code 8}}
     }
 }
 
@@ -230,7 +255,8 @@ def {{this.name}}(e):
     obj = e.get_target_obj()
 
     if code == lv.EVENT.{{this.eventType}}:
-        {{this.code}}
+        {{indent this.code 8}}
+        pass
 
 {{/each}}
 {{/if}}
@@ -312,9 +338,9 @@ export async function loadTemplate(templateName, architecture = DEFAULT_ARCHITEC
 
   // Try to load from external file with architecture-specific path
   try {
-    if (window.electronAPI && window.electronAPI.readFile) {
-      const templatePath = `templates/${architecture}/${templateName}_template.hbs`;
-      templateSource = await window.electronAPI.readFile(templatePath);
+    const api = getElectronAPI();
+    if (api?.readTemplate) {
+      templateSource = await api.readTemplate(architecture, templateName);
     }
   } catch (error) {
     console.warn(`Could not load external template ${templateName} for ${architecture}:`, error);
@@ -330,7 +356,9 @@ export async function loadTemplate(templateName, architecture = DEFAULT_ARCHITEC
   }
 
   // Compile template
-  const compiledTemplate = Handlebars.compile(templateSource);
+  // The output is source code, not HTML: never HTML-escape values
+  // (otherwise `a = b > c` becomes `a &#x3D; b &gt; c`)
+  const compiledTemplate = Handlebars.compile(templateSource, { noEscape: true });
 
   // Cache the compiled template
   templateCache[cacheKey] = compiledTemplate;
@@ -350,9 +378,10 @@ export function clearTemplateCache() {
  */
 export async function getTemplateSource(templateName, architecture = DEFAULT_ARCHITECTURE) {
   try {
-    if (window.electronAPI && window.electronAPI.readFile) {
-      const templatePath = `templates/${architecture}/${templateName}_template.hbs`;
-      return await window.electronAPI.readFile(templatePath);
+    const api = getElectronAPI();
+    if (api?.readTemplate) {
+      const source = await api.readTemplate(architecture, templateName);
+      if (source) return source;
     }
   } catch (error) {
     // File doesn't exist or can't be read
@@ -366,9 +395,9 @@ export async function getTemplateSource(templateName, architecture = DEFAULT_ARC
  */
 export async function saveTemplateSource(templateName, architecture = DEFAULT_ARCHITECTURE, source) {
   try {
-    if (window.electronAPI && window.electronAPI.writeFile) {
-      const templatePath = `templates/${architecture}/${templateName}_template.hbs`;
-      await window.electronAPI.writeFile(templatePath, source);
+    const api = getElectronAPI();
+    if (api?.writeTemplate) {
+      await api.writeTemplate(architecture, templateName, source);
 
       // Clear cache to force reload
       const cacheKey = `${architecture}_${templateName}`;

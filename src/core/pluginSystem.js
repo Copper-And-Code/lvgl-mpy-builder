@@ -3,6 +3,22 @@
  * Allows loading external plugins to extend editor functionality
  */
 
+/**
+ * Loading plugins from URLs, files or pasted code is disabled: the code would
+ * run unsandboxed in the renderer. Built-in plugins can still be registered
+ * with registerPlugin().
+ */
+export const EXTERNAL_PLUGINS_ENABLED = false;
+
+export const EXTERNAL_PLUGINS_DISABLED_MESSAGE =
+  'Loading external plugins is disabled until plugins run in a sandbox.';
+
+function assertExternalPluginsEnabled() {
+  if (!EXTERNAL_PLUGINS_ENABLED) {
+    throw new Error(EXTERNAL_PLUGINS_DISABLED_MESSAGE);
+  }
+}
+
 class PluginSystem {
   constructor() {
     this.plugins = new Map();
@@ -183,6 +199,7 @@ class PluginSystem {
    * Load plugin from URL or file
    */
   async loadPluginFromURL(url) {
+    assertExternalPluginsEnabled();
     try {
       const response = await fetch(url);
       const pluginCode = await response.text();
@@ -205,8 +222,10 @@ class PluginSystem {
    * Execute plugin code in a controlled context
    */
   executePluginCode(code) {
-    // In a real implementation, this should use a proper sandbox
-    // For now, we use Function constructor with limited scope
+    // Running untrusted code with new Function() in the renderer gives it full
+    // access to the preload APIs (file system). Disabled until plugins run in
+    // a real sandbox (iframe/worker + postMessage API).
+    assertExternalPluginsEnabled();
     try {
       const moduleExports = {};
       const module = { exports: moduleExports };
@@ -291,7 +310,7 @@ export const examplePlugin = {
     {
       id: 'rust',
       name: 'Rust',
-      generate: (widgets) => {
+      generate: (_widgets) => {
         return '// Rust code here';
       },
     },

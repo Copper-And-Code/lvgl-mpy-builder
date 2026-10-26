@@ -1,8 +1,8 @@
 import React from 'react';
-import { Group, Rect, Text, Circle, Line, Arc } from 'react-konva';
+import { Group, Rect, Text, Circle, Line } from 'react-konva';
 
 const WidgetRenderer = ({ widget, isSelected, onSelect, onDragEnd, onDragStart }) => {
-  const { id, type, props } = widget;
+  const { type, props } = widget;
 
   const renderWidget = () => {
     switch (type) {
