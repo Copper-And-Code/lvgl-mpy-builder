@@ -507,47 +507,30 @@ Version 2.2 introduces a powerful template system that allows you to fully custo
 
 #### Template Files Location (Updated in v2.3)
 
-Templates are now organized by target architecture in subdirectories:
+Templates are organized by target architecture in subdirectories:
 - `templates/unix/` - Generic Unix/Linux templates
 - `templates/stm32/` - STM32 microcontroller templates
 - `templates/esp32/` - ESP32 microcontroller templates
 
 Each architecture directory contains:
-- `c_template.hbs` - C code template (single page)
-- `micropython_template.hbs` - MicroPython template (single page)
-- `c_multipage_template.hbs` - C code template (multi-page)
-- `micropython_multipage_template.hbs` - MicroPython template (multi-page)
+- `c_multipage_template.hbs` - C code template
+- `micropython_multipage_template.hbs` - MicroPython template
+
+Every project has at least one page, so the same templates are used for one or more pages.
 
 #### How to Customize Templates
 
-1. Navigate to the `templates/{architecture}/` folder in your installation directory
-2. Open any `.hbs` (Handlebars) template file in a text editor
-3. Modify the template structure while preserving the variable placeholders
-4. Save the file - changes will be used in the next code generation for that architecture
+The bundled templates are read-only. A customized copy is saved in the application's
+data directory (`<userData>/templates/{architecture}/`) and takes precedence over the
+bundled one; templates are loaded at code generation time.
 
 #### Template Variables
 
 Templates use Handlebars syntax with the following variables:
 
-**Common Variables:**
 - `{{projectName}}` - Name of the project
 - `{{generatedDate}}` - ISO timestamp of code generation
-- `{{canvasWidth}}`, `{{canvasHeight}}` - Canvas dimensions
-- `{{functionName}}` - Sanitized function name
-- `{{hasEventCallbacks}}` - Boolean for event callbacks presence
-
-**Widget Data:**
-- `{{#each widgets}}...{{/each}}` - Loop through all widgets
-- `{{{this}}}` - Raw widget code (triple braces preserve formatting)
-
-**Event Callbacks:**
-- `{{#each eventCallbacks}}...{{/each}}` - Loop through event callbacks
-- `{{this.name}}` - Callback function name
-- `{{this.type}}` - Event type constant
-- `{{this.code}}` - User-defined callback code
-- `{{this.eventType}}` - Event type for MicroPython (without LV_EVENT_ prefix)
-
-**Multi-Page Variables:**
+- `{{declarations}}` - File-scope declarations: widget handles, fonts and images in use, helper functions (C); the `objects` dictionary (MicroPython)
 - `{{pageCount}}` - Total number of pages
 - `{{lastPageIndex}}` - Index of last page (pageCount - 1)
 - `{{baseName}}` - Base name for functions
@@ -556,7 +539,11 @@ Templates use Handlebars syntax with the following variables:
   - `{{this.functionName}}` - Page function name
   - `{{this.width}}`, `{{this.height}}` - Page dimensions
   - `{{this.widgetCount}}` - Number of widgets in page
-  - `{{this.widgets}}` - Widget code array
+  - `{{#each this.widgets}}{{this}}{{/each}}` - Code of each widget
+- `{{hasEventCallbacks}}` - Whether there are event handlers
+- `{{#each eventCallbacks}}...{{/each}}` - Event handlers
+  - `{{this.name}}` - Handler function name
+  - `{{indent this.body 4}}` - Handler body (one branch per event code), re-indented by 4 spaces
 
 #### Example Customizations
 
@@ -564,15 +551,9 @@ Templates use Handlebars syntax with the following variables:
 ```handlebars
 /*
  * Company: My Company
- * Author: {{author}}
  * Project: {{projectName}}
  * Generated: {{generatedDate}}
  */
-```
-
-**Change function naming:**
-```handlebars
-void create_{{projectName}}_ui(lv_obj_t *parent)
 ```
 
 **Add custom includes:**
@@ -587,14 +568,12 @@ You can reorganize the generated code structure, add comments, change indentatio
 
 #### Reset to Defaults
 
-If you need to reset a template to its original state, simply delete the template file. The system will automatically use the built-in default template.
+Delete the customized copy in the application's data directory: the bundled template is used again.
 
 #### Notes
 
-- Templates are loaded at code generation time
-- Invalid templates will fall back to defaults with a warning
-- Use triple braces `{{{variable}}}` for raw output (preserves formatting)
-- Use double braces `{{variable}}` for escaped output
+- The output is source code, so values are never HTML-escaped: `{{variable}}` and `{{{variable}}}` produce the same text
+- The `indent` helper re-indents multi-line text, which keeps user code valid inside Python blocks
 - Handlebars helpers like `{{#if}}`, `{{#each}}`, `{{#unless}}` are supported
 
 ## v2.3 Features
@@ -636,19 +615,13 @@ Your architecture selection is **automatically saved** with the project and will
 ```
 templates/
 ├── unix/
-│   ├── c_template.hbs
 │   ├── c_multipage_template.hbs
-│   ├── micropython_template.hbs
 │   └── micropython_multipage_template.hbs
 ├── stm32/
-│   ├── c_template.hbs
 │   ├── c_multipage_template.hbs
-│   ├── micropython_template.hbs
 │   └── micropython_multipage_template.hbs
 └── esp32/
-    ├── c_template.hbs
     ├── c_multipage_template.hbs
-    ├── micropython_template.hbs
     └── micropython_multipage_template.hbs
 ```
 
@@ -679,6 +652,8 @@ You can easily add support for additional architectures:
      MY_CUSTOM: 'my_custom_arch',  // Add your architecture
    };
    ```
+
+   Add it also to the `ARCHITECTURES` whitelist in `src/main/templateStore.js`: the Electron main process only reads and writes templates of listed architectures.
 
 5. **Add to Selector** (in `getAvailableArchitectures()`):
    ```javascript

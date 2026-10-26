@@ -240,7 +240,7 @@ Obiettivo: il codice generato **compila e gira**, verificato in CI.
    - **Simboli:** script Python 3.15 che estrae dal binding i simboli esportati e fallisce se il profilo `mpy-lvgl-9.3` usa nomi inesistenti.
 
 #### Stato della fase 1: completata
-_Aggiornamento: rimosso il supporto ai dati dei formati precedenti (formato v1.1 senza pagine nello store, valori `LV_LABEL_LONG_*` pre-9.1, campi dei template a un solo evento), mai usati. Un file senza pagine ora viene rifiutato con un messaggio._
+_Aggiornamento: rimosso il supporto ai dati dei formati precedenti (formato v1.1 senza pagine nello store, valori `LV_LABEL_LONG_*` pre-9.1, campi dei template a un solo evento), mai usati. Un file senza pagine ora viene rifiutato con un messaggio. Rimosso anche il ramo "pagina singola" del generatore, con i 6 template `c_template.hbs`/`micropython_template.hbs`: ogni progetto ha almeno una pagina e usa i template multipagina._
 
 **Nuovo nucleo** in `src/generators/core/`:
 - `identifiers.js`: identificatori univoci per tutto il progetto, validi in C e Python, mai uguali a parole riservate, builtin, simboli `lv_` o nomi usati dai template.

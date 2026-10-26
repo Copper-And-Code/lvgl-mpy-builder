@@ -33,101 +33,6 @@ export const DEFAULT_ARCHITECTURE = ARCHITECTURES.STM32;
 // Default templates (fallback if external files are not available)
 // C templates target LVGL 9.6, MicroPython templates the lv_micropython binding (LVGL 9.3) API
 const defaultTemplates = {
-  c: `/*
- * Auto-generated LVGL UI Code
- * Project: {{projectName}}
- * Generated: {{generatedDate}}
- * Display Size: {{canvasWidth}}x{{canvasHeight}}
- *
- * LVGL Version: 9.6 (no deprecated APIs)
- */
-
-#include "lvgl.h"
-
-{{#if declarations}}
-{{declarations}}
-
-{{/if}}
-
-{{#if hasEventCallbacks}}
-/* Event callback declarations */
-{{#each eventCallbacks}}
-static void {{this.name}}(lv_event_t *e);
-{{/each}}
-
-{{/if}}
-void {{functionName}}(lv_obj_t *parent)
-{
-    if (parent == NULL) {
-        parent = lv_screen_active();
-    }
-
-{{#each widgets}}
-{{{this}}}
-{{/each}}
-}
-
-{{#if hasEventCallbacks}}
-{{#each eventCallbacks}}
-static void {{this.name}}(lv_event_t *e)
-{
-    lv_event_code_t code = lv_event_get_code(e);
-    lv_obj_t *obj = lv_event_get_target_obj(e);
-    LV_UNUSED(obj);
-
-    {{indent this.body 4}}
-}
-
-{{/each}}
-{{/if}}
-void {{functionName}}_init(void)
-{
-    lv_obj_t *screen = lv_obj_create(NULL);
-    {{functionName}}(screen);
-    lv_screen_load(screen);
-}
-`,
-
-  micropython: `"""
-Auto-generated LVGL UI Code for MicroPython
-Project: {{projectName}}
-Generated: {{generatedDate}}
-Display Size: {{canvasWidth}}x{{canvasHeight}}
-
-LVGL Version: 9.3 (lv_micropython binding)
-"""
-
-import lvgl as lv
-
-{{#if declarations}}
-{{declarations}}
-
-{{/if}}
-
-{{#if hasEventCallbacks}}
-{{#each eventCallbacks}}
-def {{this.name}}(e):
-    code = e.get_code()
-    obj = e.get_target_obj()
-
-    {{indent this.body 4}}
-
-{{/each}}
-{{/if}}
-def {{functionName}}(parent=None):
-    if parent is None:
-        parent = lv.screen_active()
-
-{{#each widgets}}
-{{{this}}}
-{{/each}}
-
-def {{functionName}}_init():
-    screen = lv.obj()
-    {{functionName}}(screen)
-    lv.screen_load(screen)
-`,
-
   c_multipage: `/*
  * Auto-generated LVGL UI Code (Multi-Page)
  * Project: {{projectName}}
@@ -326,7 +231,7 @@ const templateCache = {};
 
 /**
  * Load a template from file or use default
- * @param {string} templateName - Name of the template (c, micropython, c_multipage, micropython_multipage)
+ * @param {string} templateName - Name of the template (c_multipage, micropython_multipage)
  * @param {string} architecture - Target architecture (unix, stm32, esp32, rp2040, nrf52, etc.)
  * @returns {Promise<Function>} Compiled Handlebars template
  */
@@ -433,8 +338,6 @@ export async function resetTemplate(templateName, architecture = DEFAULT_ARCHITE
  */
 export function getAvailableTemplates() {
   return [
-    { name: 'c', label: 'C (Single Page)' },
-    { name: 'micropython', label: 'MicroPython (Single Page)' },
     { name: 'c_multipage', label: 'C (Multi-Page)' },
     { name: 'micropython_multipage', label: 'MicroPython (Multi-Page)' },
   ];

@@ -54,19 +54,14 @@ export function orderWidgets(widgets) {
 }
 
 function projectPages(projectData) {
-  if (Array.isArray(projectData.pages) && projectData.pages.length > 0) {
-    return projectData.pages.map((page, index) => ({
-      name: page.name || `Page ${index + 1}`,
-      widgets: Array.isArray(page.widgets) ? page.widgets : [],
-      canvasSize: page.canvasSize ?? DEFAULT_CANVAS,
-    }));
+  if (!Array.isArray(projectData.pages) || projectData.pages.length === 0) {
+    throw new Error('The project has no pages');
   }
-  // Legacy single-page projects
-  return [{
-    name: 'Main',
-    widgets: Array.isArray(projectData.widgets) ? projectData.widgets : [],
-    canvasSize: projectData.canvasSize ?? DEFAULT_CANVAS,
-  }];
+  return projectData.pages.map((page, index) => ({
+    name: page.name || `Page ${index + 1}`,
+    widgets: Array.isArray(page.widgets) ? page.widgets : [],
+    canvasSize: page.canvasSize ?? DEFAULT_CANVAS,
+  }));
 }
 
 /** Python accepts `//` C-style comments typed in the event editor as `#` comments. */
@@ -100,7 +95,8 @@ function renderHandlerBody(handler, language) {
 export function buildProjectCode(projectData, language) {
   const ids = new IdentifierAllocator();
   const baseName = ids.allocate(projectData.projectName || 'ui', 'ui');
-  ids.reserve(`${baseName}_init`, `${baseName}_create`, `${baseName}_create_init`, `${baseName}_load_page`, `${baseName}_get_current_page`);
+  // Functions defined by the templates
+  ids.reserve(`${baseName}_init`, `${baseName}_load_page`, `${baseName}_load_page_anim`, `${baseName}_get_current_page`);
 
   const pages = projectPages(projectData).map((page) => ({
     ...page,

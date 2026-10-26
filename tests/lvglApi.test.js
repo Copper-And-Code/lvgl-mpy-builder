@@ -171,6 +171,13 @@ describe.runIf(hasPython).each(Object.entries(PROJECTS))('%s project: Python syn
   });
 });
 
+describe('project structure', () => {
+  it('requires at least one page', async () => {
+    await expect(generateCCode({ projectName: 'x', widgets: [] }, 'unix')).rejects.toThrow(/no pages/);
+    await expect(generateMicroPythonCode({ projectName: 'x', pages: [] }, 'unix')).rejects.toThrow(/no pages/);
+  });
+});
+
 describe('hostile project', () => {
   it('escapes strings and comments', async () => {
     const c = await generateCCode(hostileProject(), 'unix');
