@@ -206,6 +206,30 @@ describe('LVGL editor (Electron)', () => {
     assert.equal(await page.locator('.cloud-sync-toggle').count(), 0);
   });
 
+  it('binds a slider and a label to a variable', async () => {
+    await page.click('button:has-text("Variables")');
+    await page.click('.variables-dialog button:has-text("Add variable")');
+    await page.locator('.variables-dialog input[aria-label="Variable name"]').fill('speed');
+    await page.locator('.variables-dialog input[aria-label="Initial value"]').fill('30');
+    await page.click('.variables-dialog .modal-close');
+
+    await page.click('button[title^="Add Slider ("]');
+    await page.locator('select[aria-label="Bound variable"]').selectOption({ label: 'speed' });
+    await page.click('button[title^="Add Label ("]');
+    await page.locator('select[aria-label="Bound variable"]').selectOption({ label: 'speed' });
+    await page.locator('input[aria-label="Text format"]').fill('Speed %d km/h');
+
+    await page.click('button:has-text("Export Code")');
+    await page.locator('.export-controls select').first().selectOption('c');
+    const code = page.locator('.code-preview code');
+    await code.filter({ hasText: 'lv_slider_bind_value' }).waitFor();
+    const text = await code.textContent();
+    assert.match(text, /var_speed = lv_subject_create\(LV_SUBJECT_TYPE_INT\);/);
+    assert.match(text, /lv_subject_set_int\(var_speed, 30\);/);
+    assert.match(text, /lv_label_bind_text\(ui_\w+, var_speed, "Speed %d km\/h"\);/);
+    await page.click('.modal-close');
+  });
+
   it('forbids eval in the renderer (Content Security Policy)', async () => {
     // page.evaluate() itself is not subject to the CSP: use a string timer,
     // which the page evaluates

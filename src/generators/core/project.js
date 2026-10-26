@@ -97,7 +97,10 @@ export function buildProjectCode(projectData, language) {
   const ids = new IdentifierAllocator();
   const baseName = ids.allocate(projectData.projectName || 'ui', 'ui');
   // Functions defined by the templates
-  ids.reserve(`${baseName}_init`, `${baseName}_load_page`, `${baseName}_load_page_anim`, `${baseName}_get_current_page`);
+  ids.reserve(
+    `${baseName}_init`, `${baseName}_load_page`, `${baseName}_load_page_anim`, `${baseName}_get_current_page`,
+    `${baseName}_variables_init`
+  );
 
   const pages = projectPages(projectData).map((page) => ({
     ...page,
@@ -118,6 +121,18 @@ export function buildProjectCode(projectData, language) {
     });
   });
 
+  // Variables (integer LVGL subjects) used by data bindings, by id
+  const variables = new Map();
+  (projectData.variables ?? []).forEach((variable) => {
+    if (variable && typeof variable.id === 'string' && !variables.has(variable.id)) {
+      variables.set(variable.id, {
+        name: ids.allocate(`var_${variable.name ?? ''}`, 'var'),
+        initial: Math.round(Number(variable.initial) || 0),
+      });
+    }
+  });
+  const variablesInit = variables.size ? `${baseName}_variables_init` : null;
+
   const handlers = new Map(); // name -> { name, branches: Map(eventCode -> code) }
   const handlersByRequest = new Map(); // requested name -> handler names
   // Images of the Asset Manager, by name, are embedded in the code; any other
@@ -131,6 +146,7 @@ export function buildProjectCode(projectData, language) {
   const context = {
     language,
     temp: (base) => ids.allocate(base, 'tmp'),
+    variable: (id) => variables.get(id)?.name ?? null,
     image: (source) => {
       if (embedded.has(source)) return v.image(source, embedded.get(source).symbol);
       const asset = assets.get(source);
@@ -196,7 +212,11 @@ export function buildProjectCode(projectData, language) {
     width: page.canvasSize.width,
     height: page.canvasSize.height,
     widgetCount: page.widgets.length,
-    widgets: page.nodes.map((node) => `${emitter.emit(node.ops)}\n`),
+    widgets: [
+      // C subjects are created on first use (MicroPython creates them at import)
+      ...(variablesInit && language === 'c' ? [`    ${variablesInit}();\n`] : []),
+      ...page.nodes.map((node) => `${emitter.emit(node.ops)}\n`),
+    ],
   }));
 
   const eventCallbacks = [...handlers.values()].map((handler) => ({
@@ -205,16 +225,17 @@ export function buildProjectCode(projectData, language) {
   }));
 
   const images = { embedded: [...embedded.values()], filePaths: [...filePaths], unsupported: [...unsupported] };
+  const variableList = [...variables.values()];
   const declarations = language === 'c'
-    ? cDeclarations({ widgetNames: [...widgetNames], fonts, images, opaHelper })
-    : pythonDeclarations({ fonts, images });
+    ? cDeclarations({ widgetNames: [...widgetNames], fonts, images, opaHelper, variables: variableList, variablesInit })
+    : pythonDeclarations({ fonts, images, variables: variableList });
 
   // `model` exposes the language-neutral operations (used by the API tests)
   const model = { pages: pages.map((page) => ({ name: page.name, nodes: page.nodes })) };
   return { baseName, pages: pagesData, eventCallbacks, declarations, model };
 }
 
-function cDeclarations({ widgetNames, fonts, images, opaHelper }) {
+function cDeclarations({ widgetNames, fonts, images, opaHelper, variables, variablesInit }) {
   const parts = [];
   if (fonts.size) {
     const sizes = [...fonts].sort((a, b) => a - b);
@@ -236,6 +257,18 @@ function cDeclarations({ widgetNames, fonts, images, opaHelper }) {
         `    .data = ${symbol}_data,\n};`
     );
   });
+  if (variables.length) {
+    parts.push(
+      '/* Variables for data binding (LVGL subjects). The application reads and writes them\n' +
+        ` * with lv_subject_get_int()/lv_subject_set_int() after calling ${variablesInit}(). */\n` +
+        variables.map(({ name }) => `lv_subject_t * ${name};`).join('\n') +
+        `\n\nvoid ${variablesInit}(void)\n{\n    static bool initialized = false;\n    if (initialized) return;\n    initialized = true;\n\n` +
+        variables
+          .map(({ name, initial }) => `    ${name} = lv_subject_create(LV_SUBJECT_TYPE_INT);\n    lv_subject_set_int(${name}, ${initial});`)
+          .join('\n') +
+        '\n}'
+    );
+  }
   if (widgetNames.length) {
     parts.push(
       '/* Widget handles (use `extern lv_obj_t * ui_<name>;` to access them from other files) */\n' +
@@ -261,7 +294,7 @@ function imageNotes(images, open, close) {
   return notes;
 }
 
-function pythonDeclarations({ fonts, images }) {
+function pythonDeclarations({ fonts, images, variables }) {
   const parts = [];
   if (fonts.size) {
     const sizes = [...fonts].sort((a, b) => a - b);
@@ -278,6 +311,12 @@ function pythonDeclarations({ fonts, images }) {
         `"w": ${info.width}, "h": ${info.height}}, "data_size": len(${symbol}_data), "data": ${symbol}_data})`
     );
   });
+  if (variables.length) {
+    parts.push(
+      '# Variables for data binding (LVGL subjects): read and write them with get_int()/set_int()\n' +
+        variables.map(({ name, initial }) => `${name} = lv.subject_t()\n${name}.init_int(${initial})`).join('\n')
+    );
+  }
   parts.push('# Created widgets, by name (e.g. objects["ok_button"])\nobjects = {}');
   return parts.join('\n');
 }

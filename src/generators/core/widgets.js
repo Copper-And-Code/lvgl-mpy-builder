@@ -6,6 +6,7 @@
 // and 9.6 (C) may be used: tests check every name against the API fixtures.
 
 import { enumMember, toInt, v } from './values';
+import { BINDABLE_WIDGETS, DEFAULT_LABEL_FORMAT } from '../../core/bindings';
 
 const ANIM_PROPS = { move_x: 'x', move_y: 'y', width: 'width', height: 'height', fade_in: 'opa', fade_out: 'opa' };
 
@@ -683,6 +684,14 @@ export function buildWidgetOps(node, context) {
   build(b, props);
   commonStyles(b, props);
   customStyles(b, widget.customStyles);
+
+  // Data binding: the widget follows (and for inputs, updates) the variable
+  const bindable = BINDABLE_WIDGETS[widget.type];
+  const variable = bindable && widget.binding ? context.variable(widget.binding.variableId) : null;
+  if (variable) {
+    const args = bindable.format ? [v.ref(variable), v.str(widget.binding.format || DEFAULT_LABEL_FORMAT)] : [v.ref(variable)];
+    b.set(bindable.fn, ...args);
+  }
 
   (widget.events ?? []).forEach((event) => {
     const handler = context.callbackFor(widget, event);

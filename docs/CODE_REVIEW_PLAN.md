@@ -468,6 +468,48 @@ Scelta dell'utente: non implementarle ora, ma marcarle come sperimentali.
 3. Quando `lv_micropython` passerà a LVGL ≥ 9.5 o 9.6 e a MicroPython ≥ 1.27, attivare il profilo `mpy-lvgl-9.6`: grazie alla fase 1 servirà solo aggiungere dati.
 4. Tenere attivo in CI il job "C con `LV_DISABLE_API_MAPPING`", che dà la garanzia di compatibilità con v10.
 
+#### Stato della fase 5 (prima iterazione)
+**1. Data binding: fatto.**
+- **API scelta:**
+  - In LVGL 9.6 `lv_subject_init_*` è deprecata a favore di `lv_subject_create(LV_SUBJECT_TYPE_INT)`, che però non esiste nel firmware lv_micropython (LVGL 9.3).
+  - Il C crea quindi le variabili con `lv_subject_create` + `lv_subject_set_int` in `<progetto>_variables_init()`, idempotente e chiamata da ogni funzione di pagina.
+  - Il MicroPython usa `lv.subject_t()` + `init_int()` all'import.
+- **Binding:** sono offerti solo quelli presenti in entrambi i target:
+  - `bind_value` per slider, arc, dropdown e roller;
+  - `bind_checked` per switch e checkbox;
+  - `bind_text` con formato printf per le label.
+
+  Esclusi `bar` e `spinbox`, che il firmware non ha.
+- **Editor:**
+  - dialog **Variables** (nome univoco, valore iniziale, numero di widget collegati);
+  - sezione **Data binding** nelle proprietà;
+  - il canvas mostra il valore iniziale;
+  - cancellando una variabile si rimuovono i suoi binding;
+  - la validazione scarta i binding verso variabili mancanti o widget non collegabili.
+- **Verifica:**
+  - il C compila con gcc contro LVGL 9.6 senza API deprecate;
+  - nel firmware, impostare la variabile aggiorna slider, arc, roller, label (con il formato), switch e checkbox, e muovere lo slider aggiorna la variabile (`gc.collect()` a ogni tick);
+  - 6 test unitari e 1 scenario e2e.
+- **Corretto durante i test:** assegnare un binding a un widget non collegabile creava un passo di undo vuoto.
+
+**2. Interoperabilità con l'editor ufficiale: valutata, non implementata.**
+- In LVGL 9.6 la documentazione dell'XML (`docs/src/xml.mdx`) rimanda alla documentazione di **LVGL Pro**: project.xml, globals.xml con stili, costanti, immagini, font e *subjects*, componenti e schermate.
+- Il motore XML non fa più parte del LVGL open source dalla 9.5. Il caricamento XML a runtime non è pubblico.
+- Qui non c'è nessuno strumento libero per validare un export, e la documentazione Pro non era raggiungibile da questo ambiente.
+- **Proposta:** un export XML verso LVGL Pro solo se si ha accesso all'editor Pro o al suo CLI per verificarlo, come è stato fatto per gcc e il firmware MicroPython. Il modello di variabili appena aggiunto corrisponde ai *subjects* di globals.xml e renderebbe la mappatura diretta.
+
+**3. Allineamento a LVGL e lv_micropython più recenti: automatizzato.**
+- Al 26 ottobre 2026 `lv_micropython` è ancora sul commit fissato in CI, cioè LVGL 9.3; LVGL è alla 9.6.0.
+- Nuovo workflow settimanale `.github/workflows/upstream.yml`:
+  - prende l'ultima release stabile di LVGL e l'HEAD di `lv_micropython`;
+  - compila ed esegue il codice generato contro quelle versioni;
+  - rigenera i file di riferimento dell'API e fallisce se cambiano, elencando le differenze nel riepilogo del job.
+- Ho simulato in locale il confronto con le versioni attuali: nessuna differenza, come atteso.
+- Il workflow non è ancora stato eseguito su GitHub.
+- Quando segnalerà un aggiornamento basterà aggiornare commit e versioni fissati in `ci.yml` e rigenerare i file (`scripts/lvgl-api/README.md`). I test indicheranno i nomi da adattare.
+
+**4. Compatibilità con v10:** il job con `LV_DISABLE_API_MAPPING -Werror=deprecated-declarations` resta attivo in `ci.yml` e gira anche nel workflow settimanale contro l'ultima release.
+
 ### Ordine consigliato
 Fase 0 → Fase 1 → Fase 2 → Fase 3, con Fase 4 e Fase 5 in parallelo o successive. I P0 vanno chiusi prima di qualunque nuova funzionalità.
 

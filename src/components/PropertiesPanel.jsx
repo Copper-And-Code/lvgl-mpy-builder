@@ -4,10 +4,13 @@ import { widgetDefinitions } from '../core/widgetDefinitions';
 import EventEditor from './EventEditor';
 import AnimationEditor from './AnimationEditor';
 import StyleEditor from './StyleEditor';
+import { BINDABLE_WIDGETS, DEFAULT_LABEL_FORMAT } from '../core/bindings';
 
 const PropertiesPanel = () => {
   const selectedWidget = useStore(selectSelectedWidget);
   const imageAssets = useStore((state) => state.assets.images);
+  const variables = useStore((state) => state.variables);
+  const setWidgetBinding = useStore((state) => state.setWidgetBinding);
   const { updateWidget, renameWidget, updateWidgetEvents, updateWidgetAnimations, updateWidgetStyles, deleteWidget, duplicateWidget } = useStore(
     useShallow((state) => ({
       updateWidget: state.updateWidget,
@@ -163,6 +166,44 @@ const PropertiesPanel = () => {
       <div className="properties-list">
         {definition.properties.map((prop) => renderPropertyInput(prop))}
       </div>
+
+      {BINDABLE_WIDGETS[selectedWidget.type] && (
+        <div className="binding-section">
+          <h4>Data binding</h4>
+          <div className="property-field">
+            <label>{BINDABLE_WIDGETS[selectedWidget.type].label} bound to</label>
+            <select
+              aria-label="Bound variable"
+              value={selectedWidget.binding?.variableId ?? ''}
+              onChange={(e) =>
+                setWidgetBinding(
+                  selectedWidget.id,
+                  e.target.value ? { ...selectedWidget.binding, variableId: e.target.value } : null
+                )
+              }
+            >
+              <option value="">(none)</option>
+              {variables.map((variable) => (
+                <option key={variable.id} value={variable.id}>
+                  {variable.name}
+                </option>
+              ))}
+            </select>
+            {variables.length === 0 && <p className="binding-hint">Create variables with the Variables button in the toolbar.</p>}
+          </div>
+          {BINDABLE_WIDGETS[selectedWidget.type].format && selectedWidget.binding && (
+            <div className="property-field">
+              <label>Text format</label>
+              <input
+                aria-label="Text format"
+                value={selectedWidget.binding.format ?? DEFAULT_LABEL_FORMAT}
+                onChange={(e) => setWidgetBinding(selectedWidget.id, { ...selectedWidget.binding, format: e.target.value })}
+              />
+              <p className="binding-hint">printf format: %d is replaced by the value, e.g. "Level: %d".</p>
+            </div>
+          )}
+        </div>
+      )}
 
       <EventEditor
         widget={selectedWidget}

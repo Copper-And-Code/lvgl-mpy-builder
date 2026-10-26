@@ -16,7 +16,7 @@ export const LVGL_CLASSES = [
 ];
 
 // Structs whose functions become methods too (lv.anim_t.set_duration, ...)
-const STRUCT_OWNERS = ['anim', 'style', 'span', 'event'];
+const STRUCT_OWNERS = ['anim', 'style', 'span', 'event', 'subject'];
 
 const byLengthDesc = (a, b) => b.length - a.length;
 const FUNCTION_OWNERS = [...LVGL_CLASSES, ...STRUCT_OWNERS].sort(byLengthDesc);

@@ -3,6 +3,8 @@ import { Group, Rect, Text, Circle, Line, Image } from 'react-konva';
 import { previewProps } from '../core/previewProps';
 import { contentOffset } from '../core/projectModel';
 import useAssetImage from './useAssetImage';
+import useStore from '../core/store';
+import { boundPreviewProps } from '../core/bindings';
 
 /**
  * Draws a widget and, nested inside it, its children. As in LVGL, children
@@ -11,7 +13,9 @@ import useAssetImage from './useAssetImage';
  */
 const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, onDragEnd, onDragStart }) => {
   const { type } = widget;
-  const props = previewProps(widget);
+  const variables = useStore((state) => state.variables);
+  // Bound widgets show the initial value of their variable
+  const props = boundPreviewProps(widget, previewProps(widget), variables);
   const isSelected = selectedWidgetId === widget.id;
   const children = childrenByParent.get(widget.id) ?? [];
   // Uploaded image shown by image and image button widgets (null if none)

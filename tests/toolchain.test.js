@@ -70,7 +70,7 @@ describe.runIf(LVGL_TREES.length > 0).each(LVGL_TREES)('C compiles against LVGL 
 });
 
 // Headless display, then the generated module, then exercise it
-function harness(generated, baseName, pageCount) {
+function harness(generated, baseName, pageCount, extra = '') {
   return `import lvgl as lv
 import gc
 _disp = lv.display_create(800, 480)
@@ -95,6 +95,7 @@ for _obj in list(objects.values()):
     for _code in (lv.EVENT.CLICKED, lv.EVENT.PRESSED, lv.EVENT.LONG_PRESSED, lv.EVENT.VALUE_CHANGED):
         _obj.send_event(_code, None)
 _run(500)
+${extra}
 print("RUN_OK", len(objects))
 `;
 }
@@ -115,10 +116,27 @@ describe.runIf(Boolean(firmware)).each(Object.entries(PROJECTS))('MicroPython ru
     const { baseName, pages } = buildProjectCode(project, 'micropython');
     const widgetCount = project.pages.reduce((sum, page) => sum + page.widgets.length, 0);
     const file = path.join(workDir, `${label.replace(/\W/g, '_')}.py`);
-    fs.writeFileSync(file, harness(await generateMicroPythonCode(project, 'unix'), baseName, pages.length));
+    // With variables: change one and print the widgets bound to it
+    const bindingCheck = project.variables?.length
+      ? [
+          'var_level.set_int(2)',
+          'var_enabled.set_int(0)',
+          '_run(100)',
+          'print("BOUND", objects["slider_widget"].get_value(), objects["arc_widget"].get_value(),',
+          '      objects["roller_widget"].get_selected(), objects["label_widget"].get_text(),',
+          '      objects["switch_widget"].has_state(lv.STATE.CHECKED), objects["checkbox_widget"].has_state(lv.STATE.CHECKED))',
+          'objects["slider_widget"].set_value(7, False)',
+          'objects["slider_widget"].send_event(lv.EVENT.VALUE_CHANGED, None)',
+          'print("FROM_WIDGET", var_level.get_int())',
+        ].join('\n')
+      : '';
+    fs.writeFileSync(file, harness(await generateMicroPythonCode(project, 'unix'), baseName, pages.length, bindingCheck));
 
     const result = spawnSync(firmware, [file], { encoding: 'utf-8', timeout: 60000 });
     expect(result.stderr).toBe('');
-    expect(result.stdout.trim()).toBe(`RUN_OK ${widgetCount}`);
+    const expected = project.variables?.length
+      ? ['BOUND 2 2 2 Level: 2 False False', 'FROM_WIDGET 7', `RUN_OK ${widgetCount}`]
+      : [`RUN_OK ${widgetCount}`];
+    expect(result.stdout.trim().split('\n')).toEqual(expected);
   });
 });

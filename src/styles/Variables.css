@@ -1,0 +1,66 @@
+.variables-dialog {
+  width: min(640px, 94vw);
+}
+
+.variables-help {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #555555;
+  line-height: 1.5;
+}
+
+.variables-empty {
+  margin: 16px 0;
+  color: #888888;
+  text-align: center;
+}
+
+.variables-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.variables-table th {
+  text-align: left;
+  font-weight: 600;
+  padding: 6px 8px;
+  border-bottom: 1px solid #dddddd;
+}
+
+.variables-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #eeeeee;
+}
+
+.variables-table input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 5px 8px;
+  border: 1px solid #cccccc;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.variables-usage {
+  text-align: center;
+  color: #555555;
+}
+
+.binding-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.binding-section h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.binding-hint {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #777777;
+  line-height: 1.4;
+}

@@ -17,7 +17,7 @@ export default [
     rules: {
       ...js.configs.recommended.rules,
       ...reactHooks.configs['recommended-latest'].rules,
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', caughtErrors: 'none' }],
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', caughtErrors: 'none', ignoreRestSiblings: true }],
     },
   },
   {

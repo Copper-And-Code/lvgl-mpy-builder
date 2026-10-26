@@ -29,6 +29,7 @@ This demonstrates how AI-assisted development can enable developers to build sop
 - **MicroPython Generator**: targets the official **lv_micropython** firmware (MicroPython 1.24.1 with LVGL 9.3)
 - **Verified output**: CI compiles the generated C against the LVGL 9.6 headers and runs the generated MicroPython on the lv_micropython firmware (see `scripts/lvgl-api/README.md`)
 - **Widget handles**: every widget is reachable from application code (`ui_<name>` in C, `objects["<name>"]` in MicroPython)
+- **Data binding**: project variables (LVGL observer subjects) bound to widget values, see [Data Binding](#data-binding)
 - **Customizable Templates**: External template files that can be modified
 - **Export**: Export directly to file or copy to clipboard
 
@@ -198,6 +199,22 @@ Notes on the targets:
 - LVGL 9.6 deprecates `lv_list`, `lv_win` and `lv_menu`: the generator builds these widgets from base widgets in a flex column, as LVGL recommends.
 - `lv.spinner` is not exported by the lv_micropython binding: in MicroPython the spinner is an arc rotated by an endless animation.
 - The default lv_micropython firmware includes the Montserrat fonts 14, 16 and 24 only: MicroPython font sizes are mapped to the closest of these.
+
+## Data Binding
+
+Variables are integer values shared by the UI and the application, generated as LVGL observer *subjects*:
+
+1. Click **Variables** in the toolbar and add a variable (name and initial value).
+2. Select a slider, arc, dropdown, roller, switch, checkbox or label and choose the variable under **Data binding** in the Properties panel (labels also take a printf format, e.g. `Speed %d km/h`).
+3. The canvas shows the initial value; the generated code keeps the widgets and the variable in sync in both directions.
+
+| | C (LVGL 9.6) | MicroPython (lv_micropython) |
+|---|---|---|
+| Variable | `lv_subject_t * var_speed;` created by `<project>_variables_init()` with `lv_subject_create()` (called by the page functions) | `var_speed = lv.subject_t()` + `init_int()` at import |
+| Read / write | `lv_subject_get_int(var_speed)` / `lv_subject_set_int(var_speed, 42)` | `var_speed.get_int()` / `var_speed.set_int(42)` |
+| Binding | `lv_slider_bind_value()`, `lv_label_bind_text()`, `lv_obj_bind_checked()`, … | `slider.bind_value()`, `label.bind_text()`, `switch.bind_checked()`, … |
+
+Only bindings available in both targets are offered (LVGL 9.6 deprecates the `lv_subject_init_*` functions, which the MicroPython firmware still uses).
 
 ## Roadmap
 

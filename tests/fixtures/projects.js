@@ -68,12 +68,27 @@ export function allWidgetsProject() {
     id: `anim_${i}`, type, duration: 300, delay: i * 10, repeat: i % 2, playback: i % 2 === 0,
     startValue: 0, endValue: 100, path: 'lv_anim_path_ease_in_out',
   }));
+  // Data binding: variables "level" and "enabled"
+  const bind = (type, variableId, extra = {}) => {
+    widgets.find((w) => w.type === type).binding = { variableId, ...extra };
+  };
+  bind('slider', 'v-level');
+  bind('arc', 'v-level');
+  bind('roller', 'v-level');
+  bind('label', 'v-level', { format: 'Level: %d' });
+  bind('switch', 'v-enabled');
+  bind('checkbox', 'v-enabled');
+
   const slider = widgets.find((w) => w.type === 'slider');
   slider.events = [{ id: 'e3', type: 'LV_EVENT_VALUE_CHANGED', callback: 'on_value', code: COMMENT_CODE }];
 
   return {
     projectName: 'All Widgets',
     pages: [{ id: 'p1', name: 'Widgets', canvasSize: { width: 800, height: 480 }, widgets }],
+    variables: [
+      { id: 'v-level', name: 'level', initial: 3 },
+      { id: 'v-enabled', name: 'enabled', initial: 1 },
+    ],
     assets: {
       images: [
         { id: 'a1', name: 'logo.png', data: PNG_DATA_URL },

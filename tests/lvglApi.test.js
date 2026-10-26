@@ -23,7 +23,7 @@ const C_SYMBOLS = new Set(cSymbolsFixture.symbols);
 const C_DEPRECATED = new Set(cSymbolsFixture.deprecated);
 const PROJECTS = { 'all widgets': allWidgetsProject, hostile: hostileProject };
 const ARCHITECTURES = ['unix', 'stm32', 'esp32'];
-const STRUCT_TYPES = { anim: 'anim_t', style: 'style_t', span: 'span_t', event: 'event_t' };
+const STRUCT_TYPES = { anim: 'anim_t', style: 'style_t', span: 'span_t', event: 'event_t', subject: 'subject_t' };
 const CTYPE_CLASSES = {
   'lv_obj_t *': 'obj',
   'lv_chart_series_t *': 'chart_series_t',
@@ -97,6 +97,9 @@ describe.each(Object.entries(PROJECTS))('%s project', (_label, makeProject) => {
       }
       for (const [, struct, method] of code.matchAll(/\blv\.([a-z_]+_t)\.([a-z_0-9]+)\b/g)) {
         if (!mpyApi.structs[struct]?.includes(method)) problems.push(`lv.${struct}.${method}`);
+      }
+      for (const [, method] of code.matchAll(/\bvar_[a-z0-9_]+\.([a-z_]+)\(/g)) {
+        if (!mpyApi.structs.subject_t.includes(method)) problems.push(`subject_t.${method}`);
       }
       for (const [, method] of code.matchAll(/\be\.([a-z_]+)\(/g)) {
         if (!mpyApi.structs.event_t.includes(method)) problems.push(`event_t.${method}`);
