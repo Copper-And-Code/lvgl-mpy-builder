@@ -1,22 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Puzzle, Plus, Trash2, Power, PowerOff, Upload, Download } from 'lucide-react';
 import pluginSystem, {
   EXTERNAL_PLUGINS_ENABLED,
   EXTERNAL_PLUGINS_DISABLED_MESSAGE,
 } from '../core/pluginSystem';
 import '../styles/PluginManager.css';
+import { notify, showConfirm } from '../core/dialogs';
 
 export default function PluginManager() {
   const [isOpen, setIsOpen] = useState(false);
-  const [plugins, setPlugins] = useState([]);
+  const [plugins, setPlugins] = useState(() => pluginSystem.getPlugins());
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [pluginUrl, setPluginUrl] = useState('');
   const [pluginCode, setPluginCode] = useState('');
   const [loadMethod, setLoadMethod] = useState('url'); // 'url' or 'code'
-
-  useEffect(() => {
-    refreshPlugins();
-  }, []);
 
   const refreshPlugins = () => {
     setPlugins(pluginSystem.getPlugins());
@@ -26,13 +23,13 @@ export default function PluginManager() {
     try {
       if (loadMethod === 'url') {
         if (!pluginUrl.trim()) {
-          alert('Please enter a plugin URL');
+          notify('Please enter a plugin URL', { kind: 'error' });
           return;
         }
         await pluginSystem.loadPluginFromURL(pluginUrl);
       } else {
         if (!pluginCode.trim()) {
-          alert('Please enter plugin code');
+          notify('Please enter plugin code', { kind: 'error' });
           return;
         }
         const pluginModule = pluginSystem.executePluginCode(pluginCode);
@@ -47,19 +44,19 @@ export default function PluginManager() {
       setPluginCode('');
       setShowAddDialog(false);
       refreshPlugins();
-      alert('Plugin loaded successfully');
+      notify('Plugin loaded successfully', { kind: 'success' });
     } catch (error) {
-      alert(`Error loading plugin: ${error.message}`);
+      notify(`Error loading plugin: ${error.message}`, { kind: 'error' });
     }
   };
 
-  const handleUnloadPlugin = (pluginId) => {
-    if (confirm(`Unload plugin ${pluginId}?`)) {
+  const handleUnloadPlugin = async (pluginId) => {
+    if (await showConfirm(`Unload plugin ${pluginId}?`, { confirmLabel: 'Unload' })) {
       try {
         pluginSystem.unregisterPlugin(pluginId);
         refreshPlugins();
       } catch (error) {
-        alert(`Error unloading plugin: ${error.message}`);
+        notify(`Error unloading plugin: ${error.message}`, { kind: 'error' });
       }
     }
   };
@@ -69,7 +66,7 @@ export default function PluginManager() {
       pluginSystem.setPluginEnabled(pluginId, enabled);
       refreshPlugins();
     } catch (error) {
-      alert(`Error toggling plugin: ${error.message}`);
+      notify(`Error toggling plugin: ${error.message}`, { kind: 'error' });
     }
   };
 
@@ -95,12 +92,12 @@ export default function PluginManager() {
         if (pluginModule && pluginModule.default) {
           pluginSystem.registerPlugin(pluginModule.default);
           refreshPlugins();
-          alert('Plugin loaded successfully');
+          notify('Plugin loaded successfully', { kind: 'success' });
         } else {
           throw new Error('Plugin must export a default object');
         }
       } catch (error) {
-        alert(`Error loading plugin: ${error.message}`);
+        notify(`Error loading plugin: ${error.message}`, { kind: 'error' });
       }
     };
     reader.readAsText(file);

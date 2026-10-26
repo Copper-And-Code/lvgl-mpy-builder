@@ -1,0 +1,116 @@
+.dialog-host-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5000;
+}
+
+.dialog-host-box {
+  background: #ffffff;
+  color: #222222;
+  border-radius: 8px;
+  padding: 20px 24px;
+  width: min(480px, 90vw);
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.dialog-host-box h3 {
+  margin: 0 0 12px;
+  font-size: 17px;
+}
+
+.dialog-host-message {
+  margin: 0 0 16px;
+  white-space: pre-wrap;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.dialog-host-box input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  margin-bottom: 16px;
+  border: 1px solid #cccccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.dialog-host-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.dialog-host-actions button {
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: 1px solid #cccccc;
+  background: #ffffff;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.dialog-host-actions .dialog-host-primary {
+  background: #2196f3;
+  border-color: #2196f3;
+  color: #ffffff;
+}
+
+.dialog-host-actions .dialog-host-danger {
+  background: #d32f2f;
+  border-color: #d32f2f;
+  color: #ffffff;
+}
+
+.dialog-host-toasts {
+  position: fixed;
+  bottom: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 5001;
+  pointer-events: none;
+}
+
+.dialog-host-toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 240px;
+  max-width: 560px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  color: #ffffff;
+  background: #37474f;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  font-size: 14px;
+  pointer-events: auto;
+}
+
+.dialog-host-toast span {
+  flex: 1;
+}
+
+.dialog-host-toast button {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.dialog-host-toast-success {
+  background: #2e7d32;
+}
+
+.dialog-host-toast-error {
+  background: #c62828;
+}

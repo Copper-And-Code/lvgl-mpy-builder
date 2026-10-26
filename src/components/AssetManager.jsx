@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import useStore from '../core/store';
 import { Image, Type, Upload, Trash2, X, FileImage, FileText } from 'lucide-react';
 import '../styles/AssetManager.css';
+import { showConfirm } from '../core/dialogs';
 
 function AssetManager({ onClose }) {
   const assets = useStore((state) => state.assets);
@@ -45,8 +46,8 @@ function AssetManager({ onClose }) {
     fileInputRef.current.click();
   };
 
-  const handleDeleteAsset = (type, assetId) => {
-    if (confirm('Are you sure you want to delete this asset?')) {
+  const handleDeleteAsset = async (type, assetId) => {
+    if (await showConfirm('Delete this asset?', { confirmLabel: 'Delete', danger: true })) {
       removeAsset(type, assetId);
     }
   };

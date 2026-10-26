@@ -20,9 +20,13 @@ contextBridge.exposeInMainWorld('electron', {
       'menu-toggle-grid'
     ];
 
-    channels.forEach(channel => {
-      ipcRenderer.on(channel, () => callback(channel));
+    const listeners = channels.map((channel) => {
+      const listener = () => callback(channel);
+      ipcRenderer.on(channel, listener);
+      return [channel, listener];
     });
+    // Unsubscribe function, so a listener is never registered twice
+    return () => listeners.forEach(([channel, listener]) => ipcRenderer.removeListener(channel, listener));
   }
 });
 

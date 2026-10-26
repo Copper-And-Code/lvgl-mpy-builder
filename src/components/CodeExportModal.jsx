@@ -4,6 +4,7 @@ import useStore from '../core/store';
 import { generateCCode } from '../generators/cGenerator';
 import { generateMicroPythonCode } from '../generators/micropythonGenerator';
 import { getAvailableArchitectures } from '../generators/templateLoader';
+import { notify } from '../core/dialogs';
 
 const CodeExportModal = ({ onClose }) => {
   const { getProjectData, targetArchitecture, setTargetArchitecture } = useStore(
@@ -48,7 +49,7 @@ const CodeExportModal = ({ onClose }) => {
 
   const handleCopy = () => {
     navigator.clipboard.writeText(code);
-    alert('Code copied to clipboard!');
+    notify('Code copied to clipboard!', { kind: 'success' });
   };
 
   const handleExport = async () => {
@@ -63,10 +64,11 @@ const CodeExportModal = ({ onClose }) => {
       });
 
       if (result.success) {
-        alert('Code exported successfully!');
+        notify('Code exported successfully!', { kind: 'success' });
         onClose();
-      } else {
-        alert('Failed to export code: ' + (result.error || 'Unknown error'));
+      } else if (result.error) {
+        // No error means the user cancelled the save dialog
+        notify('Failed to export code: ' + result.error, { kind: 'error' });
       }
     } else {
       // Fallback for browser testing

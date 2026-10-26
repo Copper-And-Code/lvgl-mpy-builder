@@ -8,6 +8,7 @@ import ComponentLibrary from './components/ComponentLibrary';
 import PluginManager from './components/PluginManager';
 import CloudSyncPanel from './components/CloudSync';
 import CollaborationPanel from './components/CollaborationPanel';
+import DialogHost from './components/DialogHost';
 import './styles/App.css';
 
 function App() {
@@ -41,6 +42,7 @@ function App() {
       <CloudSyncPanel />
       <CollaborationPanel />
       <PluginManager />
+      <DialogHost />
 
       <footer className="status-bar">
         <span>LVGL Visual Editor v3.0.0</span>

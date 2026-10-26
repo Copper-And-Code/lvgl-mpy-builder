@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import path from 'path';
+import { fileURLToPath } from 'node:url';
+
+const src = (dir = '') => fileURLToPath(new URL(`./src/${dir}`, import.meta.url));
 
 // Production Content Security Policy. Electron loads the build from file://,
 // where the response-header CSP set in main.js is not applied, so the policy
@@ -36,13 +38,15 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
+    // Desktop app loaded from disk: a single ~1 MB bundle is fine
+    chunkSizeWarningLimit: 1500,
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@core': path.resolve(__dirname, './src/core'),
-      '@components': path.resolve(__dirname, './src/components'),
-      '@generators': path.resolve(__dirname, './src/generators'),
+      '@': src(),
+      '@core': src('core'),
+      '@components': src('components'),
+      '@generators': src('generators'),
     },
   },
   server: {

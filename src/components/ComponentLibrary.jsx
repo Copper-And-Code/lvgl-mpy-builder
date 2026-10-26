@@ -3,6 +3,7 @@ import useStore from '../core/store';
 import { Package, Plus, Trash2, Download, Upload, Search, Tag, BookOpen } from 'lucide-react';
 import { componentTemplates, getTemplatesByCategory } from '../core/componentTemplates';
 import '../styles/ComponentLibrary.css';
+import { notify, showAlert, showConfirm, warningsMessage } from '../core/dialogs';
 
 export default function ComponentLibrary() {
   const [isOpen, setIsOpen] = useState(false);
@@ -24,7 +25,7 @@ export default function ComponentLibrary() {
 
   const handleSaveComponent = () => {
     if (!componentName.trim()) {
-      alert('Please enter a component name');
+      notify('Please enter a component name', { kind: 'error' });
       return;
     }
 
@@ -66,9 +67,10 @@ export default function ComponentLibrary() {
       try {
         const data = JSON.parse(e.target.result);
         const warnings = importComponentLibrary(data);
-        if (warnings.length) alert(`Library imported with ${warnings.length} correction(s):\n- ${warnings.slice(0, 10).join('\n- ')}`);
+        if (warnings.length) showAlert(warningsMessage(`The library was imported with ${warnings.length} correction(s):`, warnings));
+        else notify('Component library imported', { kind: 'success' });
       } catch (err) {
-        alert('Invalid component library file');
+        notify('Invalid component library file', { kind: 'error' });
       }
       event.target.value = '';
     };
@@ -296,8 +298,8 @@ export default function ComponentLibrary() {
                         <Plus size={16} />
                       </button>
                       <button
-                        onClick={() => {
-                          if (confirm(`Delete component "${component.name}"?`)) {
+                        onClick={async () => {
+                          if (await showConfirm(`Delete component "${component.name}"?`, { confirmLabel: 'Delete', danger: true })) {
                             deleteComponent(component.id);
                           }
                         }}
