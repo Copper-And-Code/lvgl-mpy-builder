@@ -2,7 +2,7 @@
 
 exports[`reference project snapshots (unix, bundled templates) > C 1`] = `
 "/*
- * Auto-generated LVGL UI Code (Multi-Page)
+ * Auto-generated LVGL UI Code
  * Project: Demo & Co
  * Generated: 2026-01-01T00:00:00.000Z
  * Pages: 1
@@ -10,7 +10,7 @@ exports[`reference project snapshots (unix, bundled templates) > C 1`] = `
  * LVGL Version: 9.6 (no deprecated APIs)
  * Target: Unix/Linux
  *
- * This is a customizable template file for multi-page projects.
+ * This is a customizable template file for Unix/Linux projects.
  */
 
 #include "lvgl.h"
@@ -154,7 +154,7 @@ void demo_co_init(void)
 
 exports[`reference project snapshots (unix, bundled templates) > MicroPython 1`] = `
 """"
-Auto-generated LVGL UI Code for MicroPython (Multi-Page)
+Auto-generated LVGL UI Code for MicroPython
 Project: Demo & Co
 Generated: 2026-01-01T00:00:00.000Z
 Pages: 1
@@ -162,7 +162,7 @@ Target: Unix/Linux
 
 LVGL Version: 9.3 (lv_micropython binding)
 
-This is a customizable template file for multi-page projects.
+This is a customizable template file for Unix/Linux projects.
 You can modify this file to change the structure of the generated code.
 """
 

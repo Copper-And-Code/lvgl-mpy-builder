@@ -7,7 +7,7 @@ import { loadTemplate, DEFAULT_ARCHITECTURE } from './templateLoader';
 
 export async function generateCode(projectData, language, architecture = DEFAULT_ARCHITECTURE) {
   const project = buildProjectCode(projectData, language);
-  const template = await loadTemplate(`${language}_multipage`, architecture);
+  const template = await loadTemplate(language, architecture);
   return template({
     projectName: commentText(projectData.projectName || 'Untitled'),
     generatedDate: new Date().toISOString(),

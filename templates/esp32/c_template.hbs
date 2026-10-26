@@ -1,22 +1,24 @@
 /*
- * Auto-generated LVGL UI Code for STM32 (Multi-Page)
+ * Auto-generated LVGL UI Code for ESP32
  * Project: {{projectName}}
  * Generated: {{generatedDate}}
  * Pages: {{pageCount}}
- * Target: STM32 with LVGL
+ * Target: ESP32 with LVGL (ESP-IDF or Arduino)
  *
  * LVGL Version: 9.6 (no deprecated APIs)
  *
- * This is a customizable template file for multi-page STM32 projects.
+ * This is a customizable template file for ESP32 projects.
  */
 
 #include "lvgl.h"
-#include "main.h"  // STM32 HAL includes
 
 {{#if declarations}}
 {{declarations}}
 
 {{/if}}
+// Uncomment based on your framework:
+// #include "esp_log.h"        // For ESP-IDF
+// #include <Arduino.h>        // For Arduino
 
 {{#if hasEventCallbacks}}
 /* Event callback declarations */

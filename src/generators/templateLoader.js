@@ -33,8 +33,8 @@ export const DEFAULT_ARCHITECTURE = ARCHITECTURES.STM32;
 // Default templates (fallback if external files are not available)
 // C templates target LVGL 9.6, MicroPython templates the lv_micropython binding (LVGL 9.3) API
 const defaultTemplates = {
-  c_multipage: `/*
- * Auto-generated LVGL UI Code (Multi-Page)
+  c: `/*
+ * Auto-generated LVGL UI Code
  * Project: {{projectName}}
  * Generated: {{generatedDate}}
  * Pages: {{pageCount}}
@@ -142,8 +142,8 @@ void {{baseName}}_init(void)
 }
 `,
 
-  micropython_multipage: `"""
-Auto-generated LVGL UI Code for MicroPython (Multi-Page)
+  micropython: `"""
+Auto-generated LVGL UI Code for MicroPython
 Project: {{projectName}}
 Generated: {{generatedDate}}
 Pages: {{pageCount}}
@@ -231,7 +231,7 @@ const templateCache = {};
 
 /**
  * Load a template from file or use default
- * @param {string} templateName - Name of the template (c_multipage, micropython_multipage)
+ * @param {string} templateName - Name of the template (c, micropython)
  * @param {string} architecture - Target architecture (unix, stm32, esp32, rp2040, nrf52, etc.)
  * @returns {Promise<Function>} Compiled Handlebars template
  */
@@ -338,8 +338,8 @@ export async function resetTemplate(templateName, architecture = DEFAULT_ARCHITE
  */
 export function getAvailableTemplates() {
   return [
-    { name: 'c_multipage', label: 'C (Multi-Page)' },
-    { name: 'micropython_multipage', label: 'MicroPython (Multi-Page)' },
+    { name: 'c', label: 'C' },
+    { name: 'micropython', label: 'MicroPython' },
   ];
 }
 

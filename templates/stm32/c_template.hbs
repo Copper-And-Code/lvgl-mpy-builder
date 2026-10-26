@@ -1,16 +1,17 @@
 /*
- * Auto-generated LVGL UI Code (Multi-Page)
+ * Auto-generated LVGL UI Code for STM32
  * Project: {{projectName}}
  * Generated: {{generatedDate}}
  * Pages: {{pageCount}}
+ * Target: STM32 with LVGL
  *
  * LVGL Version: 9.6 (no deprecated APIs)
- * Target: Unix/Linux
  *
- * This is a customizable template file for multi-page projects.
+ * This is a customizable template file for STM32 projects.
  */
 
 #include "lvgl.h"
+#include "main.h"  // STM32 HAL includes
 
 {{#if declarations}}
 {{declarations}}
@@ -121,6 +122,7 @@ int {{baseName}}_get_current_page(void)
 
 /**
  * Initialize all screens and show the first page
+ * Call this after LVGL and display are initialized
  */
 void {{baseName}}_init(void)
 {

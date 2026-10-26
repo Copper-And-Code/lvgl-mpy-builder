@@ -513,10 +513,10 @@ Templates are organized by target architecture in subdirectories:
 - `templates/esp32/` - ESP32 microcontroller templates
 
 Each architecture directory contains:
-- `c_multipage_template.hbs` - C code template
-- `micropython_multipage_template.hbs` - MicroPython template
+- `c_template.hbs` - C code template
+- `micropython_template.hbs` - MicroPython template
 
-Every project has at least one page, so the same templates are used for one or more pages.
+Every project has at least one page; the same templates handle any number of pages.
 
 #### How to Customize Templates
 
@@ -615,14 +615,14 @@ Your architecture selection is **automatically saved** with the project and will
 ```
 templates/
 ├── unix/
-│   ├── c_multipage_template.hbs
-│   └── micropython_multipage_template.hbs
+│   ├── c_template.hbs
+│   └── micropython_template.hbs
 ├── stm32/
-│   ├── c_multipage_template.hbs
-│   └── micropython_multipage_template.hbs
+│   ├── c_template.hbs
+│   └── micropython_template.hbs
 └── esp32/
-    ├── c_multipage_template.hbs
-    └── micropython_multipage_template.hbs
+    ├── c_template.hbs
+    └── micropython_template.hbs
 ```
 
 #### Adding Custom Architectures

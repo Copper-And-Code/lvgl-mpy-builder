@@ -1,13 +1,13 @@
 /*
- * Auto-generated LVGL UI Code for ESP32 (Multi-Page)
+ * Auto-generated LVGL UI Code
  * Project: {{projectName}}
  * Generated: {{generatedDate}}
  * Pages: {{pageCount}}
- * Target: ESP32 with LVGL (ESP-IDF or Arduino)
  *
  * LVGL Version: 9.6 (no deprecated APIs)
+ * Target: Unix/Linux
  *
- * This is a customizable template file for multi-page ESP32 projects.
+ * This is a customizable template file for Unix/Linux projects.
  */
 
 #include "lvgl.h"
@@ -16,9 +16,6 @@
 {{declarations}}
 
 {{/if}}
-// Uncomment based on your framework:
-// #include "esp_log.h"        // For ESP-IDF
-// #include <Arduino.h>        // For Arduino
 
 {{#if hasEventCallbacks}}
 /* Event callback declarations */
@@ -124,7 +121,6 @@ int {{baseName}}_get_current_page(void)
 
 /**
  * Initialize all screens and show the first page
- * Call this after LVGL and display are initialized
  */
 void {{baseName}}_init(void)
 {

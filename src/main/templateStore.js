@@ -10,7 +10,7 @@ const path = require('path');
 const fs = require('fs');
 
 const ARCHITECTURES = ['unix', 'stm32', 'esp32', 'rp2040', 'nrf52'];
-const TEMPLATE_NAMES = ['c_multipage', 'micropython_multipage'];
+const TEMPLATE_NAMES = ['c', 'micropython'];
 const MAX_TEMPLATE_SIZE = 1024 * 1024; // 1 MiB
 
 function resolveTemplatePath(baseDir, architecture, templateName) {
