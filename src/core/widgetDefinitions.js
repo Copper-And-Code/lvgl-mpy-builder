@@ -1027,9 +1027,11 @@ export function createWidget(type, id, props = {}) {
     id,
     type,
     name: `${definition.name}_${id.slice(-4)}`,
+    parentId: null,
     props: { ...definition.defaultProps, ...props },
     events: [],
-    children: [],
+    animations: [],
+    customStyles: {},
   };
 }
 

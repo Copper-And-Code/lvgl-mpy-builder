@@ -2,7 +2,7 @@ import useStore from '../core/store';
 import { widgetDefinitions, WIDGET_TYPES } from '../core/widgetDefinitions';
 
 const WidgetPalette = () => {
-  const { addWidget } = useStore();
+  const addWidget = useStore((state) => state.addWidget);
 
   const handleAddWidget = (type) => {
     addWidget(type, { x: 100, y: 100 });
@@ -48,7 +48,7 @@ const WidgetPalette = () => {
 
   return (
     <div className="widget-palette">
-      <h3>Widgets <span style={{ fontSize: '10px', color: '#888' }}>LVGL 9.3</span></h3>
+      <h3>Widgets <span style={{ fontSize: '10px', color: '#888' }} title="C: LVGL 9.6 · MicroPython: lv_micropython (LVGL 9.3)">LVGL 9</span></h3>
 
       {widgetCategories.map((category) => (
         <div key={category.name} className="widget-category">

@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react';
-import useStore from '../core/store';
+import { useShallow } from 'zustand/react/shallow';
+import useStore, { selectCanRedo, selectCanUndo, selectCanvasSize } from '../core/store';
 import CodeExportModal from './CodeExportModal';
 import TemplateSelector from './TemplateSelector';
 import AssetManager from './AssetManager';
 
 const Toolbar = () => {
+  const canvasSize = useStore(selectCanvasSize);
+  const canUndo = useStore(selectCanUndo);
+  const canRedo = useStore(selectCanRedo);
   const {
     projectName,
     setProjectName,
-    canvasSize,
     setCanvasSize,
     displayPresets,
     zoom,
@@ -22,7 +25,25 @@ const Toolbar = () => {
     clearProject,
     getProjectData,
     loadProject,
-  } = useStore();
+  } = useStore(
+    useShallow((state) => ({
+      projectName: state.projectName,
+      setProjectName: state.setProjectName,
+      setCanvasSize: state.setCanvasSize,
+      displayPresets: state.displayPresets,
+      zoom: state.zoom,
+      setZoom: state.setZoom,
+      gridEnabled: state.gridEnabled,
+      toggleGrid: state.toggleGrid,
+      snapToGrid: state.snapToGrid,
+      toggleSnapToGrid: state.toggleSnapToGrid,
+      undo: state.undo,
+      redo: state.redo,
+      clearProject: state.clearProject,
+      getProjectData: state.getProjectData,
+      loadProject: state.loadProject,
+    }))
+  );
 
   const [showExportModal, setShowExportModal] = useState(false);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
@@ -69,8 +90,12 @@ const Toolbar = () => {
       const result = await window.electron.loadProject();
       if (result.success) {
         try {
-          loadProject(result.data);
-          alert('Project loaded successfully!');
+          const warnings = loadProject(result.data);
+          alert(
+            warnings.length
+              ? `Project loaded with ${warnings.length} correction(s):\n- ${warnings.slice(0, 10).join('\n- ')}`
+              : 'Project loaded successfully!'
+          );
         } catch (error) {
           alert('Failed to load project: ' + error.message);
         }
@@ -183,8 +208,8 @@ const Toolbar = () => {
         </div>
 
         <div className="toolbar-section toolbar-divider">
-          <button className="toolbar-btn" onClick={undo} title="Undo">Undo</button>
-          <button className="toolbar-btn" onClick={redo} title="Redo">Redo</button>
+          <button className="toolbar-btn" onClick={undo} title="Undo" disabled={!canUndo}>Undo</button>
+          <button className="toolbar-btn" onClick={redo} title="Redo" disabled={!canRedo}>Redo</button>
         </div>
 
         {/* Display size controls */}

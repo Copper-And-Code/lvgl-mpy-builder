@@ -558,12 +558,24 @@ const builders = {
 function commonStyles(b, p) {
   if (has(p.opacity) && toInt(p.opacity, 255) !== 255) b.style('opa', v.int(p.opacity, 255));
   if (has(p.bgOpa)) b.style('bg_opa', v.int(p.bgOpa, 255));
-  [
-    ['padTop', 'pad_top'], ['padBottom', 'pad_bottom'], ['padLeft', 'pad_left'], ['padRight', 'pad_right'],
-    ['padRow', 'pad_row'], ['padColumn', 'pad_column'],
-  ].forEach(([prop, style]) => {
-    if (toInt(p[prop])) b.style(style, v.int(p[prop]));
-  });
+  // Padding set in the editor is always emitted, also when 0: otherwise the
+  // LVGL theme padding applies and children are not where the canvas shows
+  // them (child coordinates are relative to the parent's content area)
+  const sides = [['padTop', 'pad_top'], ['padBottom', 'pad_bottom'], ['padLeft', 'pad_left'], ['padRight', 'pad_right']];
+  const values = sides.map(([prop]) => (has(p[prop]) ? toInt(p[prop]) : null));
+  if (values.every((value) => value !== null && value === values[0])) {
+    b.style('pad_all', v.int(values[0]));
+  } else {
+    sides.forEach(([prop, style]) => {
+      if (has(p[prop])) b.style(style, v.int(p[prop]));
+    });
+  }
+  if (has(p.padRow) && has(p.padColumn) && toInt(p.padRow) === toInt(p.padColumn)) {
+    b.style('pad_gap', v.int(p.padRow));
+  } else {
+    if (has(p.padRow)) b.style('pad_row', v.int(p.padRow));
+    if (has(p.padColumn)) b.style('pad_column', v.int(p.padColumn));
+  }
   if (toInt(p.shadowWidth)) {
     b.style('shadow_width', v.int(p.shadowWidth));
     b.style('shadow_color', v.color(p.shadowColor));

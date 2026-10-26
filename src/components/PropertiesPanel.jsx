@@ -1,13 +1,23 @@
-import useStore from '../core/store';
+import { useShallow } from 'zustand/react/shallow';
+import useStore, { selectSelectedWidget } from '../core/store';
 import { widgetDefinitions } from '../core/widgetDefinitions';
 import EventEditor from './EventEditor';
 import AnimationEditor from './AnimationEditor';
 import StyleEditor from './StyleEditor';
 
 const PropertiesPanel = () => {
-  const { widgets, selectedWidgetId, updateWidget, updateWidgetEvents, updateWidgetAnimations, updateWidgetStyles, deleteWidget, duplicateWidget } = useStore();
-
-  const selectedWidget = widgets.find((w) => w.id === selectedWidgetId);
+  const selectedWidget = useStore(selectSelectedWidget);
+  const { updateWidget, renameWidget, updateWidgetEvents, updateWidgetAnimations, updateWidgetStyles, deleteWidget, duplicateWidget } = useStore(
+    useShallow((state) => ({
+      updateWidget: state.updateWidget,
+      renameWidget: state.renameWidget,
+      updateWidgetEvents: state.updateWidgetEvents,
+      updateWidgetAnimations: state.updateWidgetAnimations,
+      updateWidgetStyles: state.updateWidgetStyles,
+      deleteWidget: state.deleteWidget,
+      duplicateWidget: state.duplicateWidget,
+    }))
+  );
 
   if (!selectedWidget) {
     return (
@@ -124,9 +134,7 @@ const PropertiesPanel = () => {
           <input
             type="text"
             value={selectedWidget.name}
-            onChange={(e) =>
-              updateWidget(selectedWidget.id, { name: e.target.value })
-            }
+            onChange={(e) => renameWidget(selectedWidget.id, e.target.value)}
           />
         </div>
       </div>

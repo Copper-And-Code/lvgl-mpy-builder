@@ -9,7 +9,7 @@ describe('previewProps', () => {
     };
 
     expect(previewProps(widget)).toEqual({
-      bgColor: '#ff0000', textColor: '#222222', radius: 2, x: 5, fontSize: 20, borderWidth: 3,
+      bgColor: '#ff0000', textColor: '#222222', radius: 2, x: 5, fontSize: 20, borderWidth: 3, padTop: 9,
     });
   });
 

@@ -303,6 +303,59 @@ _Aggiornamento: rimosso il supporto ai dati dei formati precedenti (formato v1.1
 3. Validazione del file di progetto al caricamento, così i tipi sconosciuti non mandano più in crash la UI (`definition.icon` su `undefined`). **Nessuna migrazione:** i formati precedenti non sono mai stati usati, quindi è supportato solo il formato attuale.
 4. Canvas gerarchico, con i figli annidati nel `Group` del genitore e coordinate relative come in LVGL. Selettori Zustand con `shallow`.
 
+#### Stato della fase 2: completata
+**Store** (`src/core/store.js`):
+- `pages[]` è l'unica fonte di verità: `widgets` e `canvasSize` duplicati non esistono più. Si leggono con i selettori `selectWidgets`, `selectCanvasSize`, `selectSelectedWidget`, `selectCanUndo` e `selectCanRedo`. Così spariscono alla radice le perdite di dati di P0-2 e P1-1.
+- `getProjectData()` è una funzione pura: niente più aggiornamenti dello store durante il render.
+
+**Nuove azioni:**
+- `renameWidget` (P1-2).
+- `moveWidget`: un passo di undo per ogni trascinamento.
+- `setWidgetParent`: mantiene il widget nella stessa posizione sullo schermo e rifiuta i cicli.
+- `insertWidgets` per componenti e template: un solo passo di undo e un solo offset.
+
+**Gerarchia (P1-3):**
+- `deleteWidget` elimina anche i discendenti.
+- `duplicateWidget` copia l'intero sottoalbero.
+- `duplicatePage` rimappa gli id e i `parentId`.
+- I nomi dei widget sono sempre univoci nella pagina.
+
+**History per pagina (P1-5):**
+- Ogni pagina ha i suoi stack di undo/redo, con riferimenti immutabili al posto di `JSON.stringify`.
+- Le modifiche consecutive allo stesso campo entro 1 s sono un solo passo: digitazione, selettore colore, codice degli eventi.
+- Riordino e cambio di genitore entrano nella history.
+- I pulsanti Undo/Redo si disattivano quando non c'è nulla da annullare o ripristinare.
+
+**Validazione** (`src/core/projectValidation.js`), applicata a progetti e librerie di componenti:
+- tipi sconosciuti rimossi;
+- id duplicati sostituiti;
+- nomi duplicati rinominati;
+- genitori mancanti o cicli riportati sullo schermo;
+- dimensioni del display non valide sostituite con quella predefinita;
+- proprietà mancanti completate con i default.
+
+Le correzioni vengono mostrate all'utente al caricamento.
+
+**Canvas:**
+- I figli sono disegnati dentro il genitore, nella sua area contenuto (bordo più padding, compresi quelli dei `customStyles`), e ritagliati ai suoi bordi, come in LVGL. Spostando un genitore si spostano anche i figli.
+- Corretti anche questi difetti:
+  - clic sullo sfondo che non deselezionava;
+  - eventi di trascinamento propagati ai genitori;
+  - nodo non riallineato dopo lo snap;
+  - widget di primo livello che potevano uscire dal display.
+- Il **generatore** ora emette sempre il padding del pannello impostato nell'editor, anche se 0, con `pad_all`/`pad_gap` quando i lati sono uguali. Altrimenti si applicherebbe il padding del tema LVGL e i figli non sarebbero dove li mostra il canvas.
+
+**Componenti:** usano selettori mirati (`useShallow`) e non più `useStore()` completo.
+
+**Verifica:**
+- 102 test sempre attivi, più i 9 con gli strumenti reali: store, validazione, modello e padding generato.
+- L'app è stata avviata in Electron sotto Xvfb e pilotata con Playwright. Lo scenario copre aggiunta di widget, cambio di genitore dalla gerarchia, selezione annidata, deselezione, trascinamento del genitore con il figlio, rinomina annullata in un passo, cancellazione a cascata e undo. Non ci sono errori in console, a parte l'avviso atteso di Electron su `unsafe-eval`.
+- Lo script dello scenario non è ancora nel repository: aggiungerlo come test e2e in CI è proposto per la fase 3, insieme all'aggiornamento di Electron.
+
+**Limiti noti:**
+- L'anteprima conosce solo bordo e padding impostati nell'editor. Per i genitori diversi dal pannello (per esempio un pulsante con figli), il padding del tema LVGL non è modellato.
+- `prompt()` per aggiungere una pagina e i comandi del menu registrati due volte restano per la fase 3, come previsto dal piano.
+
 ### Fase 3 — Electron e piattaforma (1 settimana)
 1. Aggiornare a Electron 45 con `@electron-forge/cli` 8 (oppure electron-builder), `sandbox: true`, CSP restrittiva e niente `prompt()`/`alert()` bloccanti: usare modali o toast.
 2. Aggiornare Vite 8, React 19, Zustand 5, konva 10/react-konva 19, lucide-react 1.x ed ESLint 10 con flat config. Togliere `electron.vite.config.js`.

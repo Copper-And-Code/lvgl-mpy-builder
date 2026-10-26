@@ -1,10 +1,18 @@
 import React from 'react';
 import { Group, Rect, Text, Circle, Line } from 'react-konva';
 import { previewProps } from '../core/previewProps';
+import { contentOffset } from '../core/projectModel';
 
-const WidgetRenderer = ({ widget, isSelected, onSelect, onDragEnd, onDragStart }) => {
+/**
+ * Draws a widget and, nested inside it, its children. As in LVGL, children
+ * are positioned relative to the parent's content area (inside border and
+ * padding) and clipped to the parent.
+ */
+const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, onDragEnd, onDragStart }) => {
   const { type } = widget;
   const props = previewProps(widget);
+  const isSelected = selectedWidgetId === widget.id;
+  const children = childrenByParent.get(widget.id) ?? [];
 
   const renderWidget = () => {
     switch (type) {
@@ -1007,19 +1015,51 @@ const WidgetRenderer = ({ widget, isSelected, onSelect, onDragEnd, onDragStart }
     }
   };
 
+  // Drag and click events bubble up to the parents' groups: handle them only
+  // on the widget they belong to
+  const own = (handler) => (e) => {
+    if (e.target !== e.currentTarget && e.type.startsWith('drag')) return;
+    e.cancelBubble = true;
+    handler(widget.id, e);
+  };
+  const offset = contentOffset(widget);
+
   return (
     <Group
       x={props.x}
       y={props.y}
       draggable
-      onDragEnd={onDragEnd}
-      onDragStart={onDragStart}
-      onClick={onSelect}
-      onTap={onSelect}
+      onDragEnd={own(onDragEnd)}
+      onDragStart={own(onDragStart)}
+      onClick={own(onSelect)}
+      onTap={own(onSelect)}
       opacity={props.opacity !== undefined ? props.opacity / 255 : 1}
       visible={!props.hidden}
     >
       {renderWidget()}
+
+      {children.length > 0 && (
+        <Group
+          x={offset.x}
+          y={offset.y}
+          clipX={-offset.x}
+          clipY={-offset.y}
+          clipWidth={props.width}
+          clipHeight={props.height}
+        >
+          {children.map((child) => (
+            <WidgetRenderer
+              key={child.id}
+              widget={child}
+              childrenByParent={childrenByParent}
+              selectedWidgetId={selectedWidgetId}
+              onSelect={onSelect}
+              onDragEnd={onDragEnd}
+              onDragStart={onDragStart}
+            />
+          ))}
+        </Group>
+      )}
 
       {/* Selection border */}
       {isSelected && (

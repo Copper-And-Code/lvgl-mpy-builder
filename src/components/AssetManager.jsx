@@ -4,7 +4,9 @@ import { Image, Type, Upload, Trash2, X, FileImage, FileText } from 'lucide-reac
 import '../styles/AssetManager.css';
 
 function AssetManager({ onClose }) {
-  const { assets, addAsset, removeAsset } = useStore();
+  const assets = useStore((state) => state.assets);
+  const addAsset = useStore((state) => state.addAsset);
+  const removeAsset = useStore((state) => state.removeAsset);
   const [activeTab, setActiveTab] = useState('images');
   const fileInputRef = useRef(null);
 

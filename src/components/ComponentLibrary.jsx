@@ -17,6 +17,7 @@ export default function ComponentLibrary() {
   const saveAsComponent = useStore((state) => state.saveAsComponent);
   const deleteComponent = useStore((state) => state.deleteComponent);
   const insertComponent = useStore((state) => state.insertComponent);
+  const insertWidgets = useStore((state) => state.insertWidgets);
   const exportComponentLibrary = useStore((state) => state.exportComponentLibrary);
   const importComponentLibrary = useStore((state) => state.importComponentLibrary);
   const selectedWidgetId = useStore((state) => state.selectedWidgetId);
@@ -41,19 +42,8 @@ export default function ComponentLibrary() {
   };
 
   const handleInsertTemplate = (template) => {
-    // Insert template directly by adding widgets to canvas with new IDs
-    const addWidget = useStore.getState().addWidget;
-
-    template.widgets.forEach((widget, index) => {
-      // Use addWidget to properly add each widget with a new ID
-      const offsetX = 50 + (index * 5);
-      const offsetY = 50 + (index * 5);
-      addWidget(widget.type, {
-        ...widget.props,
-        x: widget.props.x + offsetX,
-        y: widget.props.y + offsetY,
-      });
-    });
+    // One undo step; widgets get new ids and unique names
+    insertWidgets(template.widgets, { x: 50, y: 50 });
   };
 
   const handleExportLibrary = () => {
@@ -75,10 +65,12 @@ export default function ComponentLibrary() {
     reader.onload = (e) => {
       try {
         const data = JSON.parse(e.target.result);
-        importComponentLibrary(data);
+        const warnings = importComponentLibrary(data);
+        if (warnings.length) alert(`Library imported with ${warnings.length} correction(s):\n- ${warnings.slice(0, 10).join('\n- ')}`);
       } catch (err) {
         alert('Invalid component library file');
       }
+      event.target.value = '';
     };
     reader.readAsText(file);
   };

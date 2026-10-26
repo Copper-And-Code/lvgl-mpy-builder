@@ -1,18 +1,21 @@
 import { useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useStore from '../core/store';
 import { Plus, Trash2, Edit2, Copy, Check, X } from 'lucide-react';
 import '../styles/PageManager.css';
 
 function PageManager() {
-  const {
-    pages,
-    currentPageId,
-    addPage,
-    deletePage,
-    renamePage,
-    switchPage,
-    duplicatePage,
-  } = useStore();
+  const { pages, currentPageId, addPage, deletePage, renamePage, switchPage, duplicatePage } = useStore(
+    useShallow((state) => ({
+      pages: state.pages,
+      currentPageId: state.currentPageId,
+      addPage: state.addPage,
+      deletePage: state.deletePage,
+      renamePage: state.renamePage,
+      switchPage: state.switchPage,
+      duplicatePage: state.duplicatePage,
+    }))
+  );
 
   const [editingPageId, setEditingPageId] = useState(null);
   const [editingName, setEditingName] = useState('');

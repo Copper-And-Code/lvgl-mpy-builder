@@ -9,6 +9,10 @@ const STYLE_PROPS = {
   radius: 'radius',
   text_color: 'textColor',
   text_font_size: 'fontSize',
+  pad_top: 'padTop',
+  pad_bottom: 'padBottom',
+  pad_left: 'padLeft',
+  pad_right: 'padRight',
 };
 
 export function previewProps(widget) {

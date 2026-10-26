@@ -1,17 +1,25 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useStore from '../core/store';
 import { generateCCode } from '../generators/cGenerator';
 import { generateMicroPythonCode } from '../generators/micropythonGenerator';
 import { getAvailableArchitectures } from '../generators/templateLoader';
 
 const CodeExportModal = ({ onClose }) => {
-  const { getProjectData, targetArchitecture, setTargetArchitecture } = useStore();
+  const { getProjectData, targetArchitecture, setTargetArchitecture } = useStore(
+    useShallow((state) => ({
+      getProjectData: state.getProjectData,
+      targetArchitecture: state.targetArchitecture,
+      setTargetArchitecture: state.setTargetArchitecture,
+    }))
+  );
   const [language, setLanguage] = useState('micropython');
   const [architecture, setArchitecture] = useState(targetArchitecture);
   const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
-  const projectData = useMemo(() => getProjectData(), []);
+  // Snapshot of the project when the dialog opens
+  const projectData = useMemo(() => getProjectData(), [getProjectData]);
   const availableArchitectures = useMemo(() => getAvailableArchitectures(), []);
 
   useEffect(() => {
