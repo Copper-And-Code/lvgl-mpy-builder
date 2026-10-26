@@ -7,6 +7,11 @@ const widget = (type, id, name, props = {}, extra = {}) => ({
   ...extra,
 });
 
+// Small real images (6x4 red PNG, 8x5 blue JPEG) for the Asset Manager
+export const PNG_DATA_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAEklEQVR4nGP4z8DwHxtmoJ4EAFeLL9Fq2vKHAAAAAElFTkSuQmCC';
+export const JPEG_DATA_URL = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAAAAAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAFAAgDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEBAAAAAAAAAAAAAAAAAAAAB//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AJ8Awip//9k=';
+const GIF_DATA_URL = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+
 // Event code that is valid both in C and (as a comment) in MicroPython
 const COMMENT_CODE = '// handled by the application';
 
@@ -32,8 +37,8 @@ export function allWidgetsProject() {
     arc: { rotation: 90, mode: 'LV_ARC_MODE_REVERSE' },
     chart: { chartType: 'bar', data2: '5,15,25', updateMode: 'circular' },
     scale: { mode: 'round_inner', labelShow: false },
-    image: { src: 'images/logo.png', rotation: 10, zoom: 512, pivotX: 5, antialias: false },
-    imagebutton: { src: 'button.png' },
+    image: { src: 'logo.png', rotation: 10, zoom: 512, pivotX: 5, antialias: false },
+    imagebutton: { src: 'photo.jpg' },
     tabview: { activeTab: 1, tabPosition: 'left' },
     msgbox: { closeButton: true },
     buttonmatrix: { oneCheck: true },
@@ -45,6 +50,9 @@ export function allWidgetsProject() {
     widget(type, `w${index}`, `${type}_widget`, overrides[type] ?? {})
   );
   widgets.push(widget('span', 'span2', 'span_expand', { mode: 'expand' }));
+  widgets.push(widget('image', 'img_file', 'image_from_file', { src: 'A:images/background.png' }));
+  widgets.push(widget('image', 'img_gif', 'image_gif', { src: 'anim.gif' }));
+  widgets.push(widget('image', 'img_same', 'image_same_asset', { src: 'logo.png' }));
 
   const button = widgets.find((w) => w.type === 'button');
   button.customStyles = {
@@ -66,6 +74,14 @@ export function allWidgetsProject() {
   return {
     projectName: 'All Widgets',
     pages: [{ id: 'p1', name: 'Widgets', canvasSize: { width: 800, height: 480 }, widgets }],
+    assets: {
+      images: [
+        { id: 'a1', name: 'logo.png', data: PNG_DATA_URL },
+        { id: 'a2', name: 'photo.jpg', data: JPEG_DATA_URL },
+        { id: 'a3', name: 'anim.gif', data: GIF_DATA_URL },
+      ],
+      fonts: [],
+    },
   };
 }
 

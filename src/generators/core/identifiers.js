@@ -25,7 +25,7 @@ const PYTHON_BUILTINS = [
   'hash', 'help', 'hex', 'id', 'input', 'int', 'isinstance', 'iter', 'len', 'list', 'locals',
   'map', 'max', 'memoryview', 'min', 'next', 'object', 'oct', 'open', 'ord', 'pow', 'print',
   'property', 'range', 'repr', 'reversed', 'round', 'set', 'setattr', 'slice', 'sorted', 'str',
-  'sum', 'super', 'tuple', 'vars', 'zip', 'const', 'micropython', 'machine', 'time', 'sys', 'gc',
+  'sum', 'super', 'tuple', 'vars', 'zip', 'const', 'micropython', 'machine', 'time', 'sys', 'gc', 'binascii',
 ];
 
 // Names used by the code templates (parameters, globals, module names)

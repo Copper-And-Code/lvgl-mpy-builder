@@ -721,7 +721,7 @@ export const widgetDefinitions = {
     },
     properties: [
       ...positionProps,
-      { name: 'src', type: 'string', label: 'Image Source' },
+      { name: 'src', type: 'image', label: 'Image' },
       { name: 'fit', type: 'select', label: 'Object Fit', options: ['contain', 'cover', 'fill'] },
       { name: 'bgColor', type: 'color', label: 'Background Color' },
       { name: 'rotation', type: 'number', label: 'Rotation (0.1 deg)' },
@@ -749,7 +749,7 @@ export const widgetDefinitions = {
     },
     properties: [
       ...positionProps,
-      { name: 'src', type: 'string', label: 'Image Source' },
+      { name: 'src', type: 'image', label: 'Image' },
       { name: 'text', type: 'string', label: 'Text' },
       { name: 'bgColor', type: 'color', label: 'Background Color' },
       { name: 'textColor', type: 'color', label: 'Text Color' },

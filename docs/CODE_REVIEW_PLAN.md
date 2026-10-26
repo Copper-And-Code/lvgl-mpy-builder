@@ -364,6 +364,67 @@ Le correzioni vengono mostrate all'utente al caricamento.
    - **Immagini:** convertirle all'export con `scripts/LVGLImage.py` di LVGL 9.6 (Python 3) in `.c` con `LV_IMAGE_DECLARE` per il target C, oppure in `.bin` o un percorso `"A:..."` per MicroPython.
    - **Font:** generarli con `lv_font_conv`.
 
+#### Stato della fase 3: completata, tranne i font
+**Dipendenze aggiornate:**
+- Electron 28 → 45 e il deprecato `electron-forge` 5 → `@electron-forge/cli` 8.
+- Vite 5 → 8 e React 18 → 19, con react-konva 19 e Konva 10.
+- Zustand 4 → 5, lucide-react 0.294 → 1.x, uuid 9 → 14 e Vitest 2 → 5.
+- ESLint 8 → 10 con configurazione flat (`eslint.config.mjs`).
+- Rimossi `electron.vite.config.js` e `eslint-plugin-react`, che non supporta ESLint 10: le regole React vengono da `eslint-plugin-react-hooks` 7, e ESLint 10 riconosce da solo le variabili usate nel JSX.
+- Le nuove regole di React 19 hanno trovato alcuni `setState` dentro effetti: corretti.
+
+**Pacchetto Electron Forge** (`forge.config.js`):
+- `npm run package`/`make` producono l'app con dentro solo `dist/`, `src/main/`, `templates/` e i moduli del processo main.
+- `app.asar` è di 5 MB invece di 51.
+- L'app pacchettizzata è stata avviata e provata.
+- Electron 45 non scarica più il binario in post-install: serve `node node_modules/electron/install.js` (documentato nel README e fatto in CI).
+
+**Dialog non bloccanti** (`src/core/dialogs.js` e `DialogHost`):
+- Tutti gli `alert`/`confirm`/`prompt` sono sostituiti da dialog e notifiche dell'app.
+- "Add page" funziona anche in Electron: crea la pagina e apre la rinomina inline.
+- Le correzioni della validazione sono elencate in un dialog.
+
+**Menu Electron:**
+- Un solo listener, rimosso allo smontaggio: preload restituisce la funzione di unsubscribe.
+- Gestori sempre aggiornati con `useEffectEvent`: zoom e undo da menu funzionano.
+
+**Template e CSP:**
+- I template vengono renderizzati dal processo main (IPC `render-template`), quindi il renderer non fa mai `eval`.
+- La CSP di produzione è `script-src 'self'`, senza `unsafe-eval`.
+- Nel browser in sviluppo e nei test i template si compilano localmente. Un test verifica che i due percorsi diano output identico per tutte le architetture.
+
+**Editor dei template** nel dialog di export:
+- modifica del template del linguaggio e dell'architettura scelti;
+- verifica della sintassi Handlebars prima del salvataggio, con l'errore mostrato;
+- salvataggio in `userData`, badge "customized" e "Reset to bundled".
+
+**Immagini:**
+- Le immagini PNG e JPEG caricate nell'Asset Manager sono incorporate nel codice con i byte originali in un `lv_image_dsc_t` e decodificate da LVGL a runtime: lodepng per PNG; tjpgd con `LV_USE_FS_MEMFS` per JPEG, che richiede larghezza e altezza nell'header.
+- Il generatore legge le dimensioni dal file.
+- Questa strada sostituisce `LVGLImage.py` (che chiede Python e librerie all'utente) e vale identica per C e MicroPython.
+- Ho verificato nel firmware lv_micropython che PNG e JPEG vengono decodificati con i pixel corretti.
+- Gli altri valori di `src` diventano percorsi di file. I formati non supportati (GIF, …) vengono saltati con un commento.
+- Nel canvas l'immagine si vede davvero. La proprietà `src` suggerisce le immagini caricate, e i nomi degli asset sono univoci.
+
+**Test:**
+- 121 test unitari e 9 con gli strumenti reali: le immagini sono compilate da gcc ed eseguite nel firmware.
+- 9 test end-to-end (`tests/e2e/`, `node:test` con `playwright-core` che pilota Electron), che coprono:
+  - gerarchia e selezione;
+  - undo della rinomina;
+  - cancellazione a cascata;
+  - pagine con dialog di conferma;
+  - export del codice;
+  - editor dei template;
+  - immagine caricata, verificata campionando il pixel nel canvas e nel codice C;
+  - CSP che blocca `eval`;
+  - nessun errore in console.
+
+**CI:** nuovo job `e2e` (Xvfb, Electron, sandbox abilitata). Non è ancora stato eseguito su GitHub.
+
+**Non fatto:**
+- **Font con `lv_font_conv`:** nessun widget può oggi scegliere un font caricato, perché la proprietà è solo la dimensione del Montserrat. Va prima aggiunta la scelta del font nell'editor, ed è più sensato farlo insieme a una revisione dell'Asset Manager.
+- **Avviso residuo di Electron in sviluppo:** con `npm run dev` la CSP di sviluppo mantiene `unsafe-eval` per Vite, e Electron mostra il suo avviso di sicurezza solo in quel caso.
+
 ### Fase 4 — Funzionalità v2.0 fatte davvero, o rimosse (2–4 settimane, da decidere)
 | Funzione | Proposta |
 |---|---|

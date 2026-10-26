@@ -60,8 +60,11 @@ export const v = {
     const name = String(path ?? '').replace(/^lv_anim_path_/, '');
     return { k: 'animPath', name: ANIM_PATHS.includes(name) ? name : 'linear' };
   },
-  /** Image source: a converted C image (LV_IMAGE_DECLARE) or a file path in MicroPython */
-  image: (source, symbol) => ({ k: 'image', source: String(source ?? ''), symbol }),
+  /**
+   * Image source: an image embedded in the code (`symbol` of its
+   * lv_image_dsc_t) or, without symbol, a path read through an LVGL file system driver
+   */
+  image: (source, symbol = null) => ({ k: 'image', source: String(source ?? ''), symbol }),
 };
 
 /**

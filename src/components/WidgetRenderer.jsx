@@ -1,7 +1,8 @@
 import React from 'react';
-import { Group, Rect, Text, Circle, Line } from 'react-konva';
+import { Group, Rect, Text, Circle, Line, Image } from 'react-konva';
 import { previewProps } from '../core/previewProps';
 import { contentOffset } from '../core/projectModel';
+import useAssetImage from './useAssetImage';
 
 /**
  * Draws a widget and, nested inside it, its children. As in LVGL, children
@@ -13,6 +14,14 @@ const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, 
   const props = previewProps(widget);
   const isSelected = selectedWidgetId === widget.id;
   const children = childrenByParent.get(widget.id) ?? [];
+  // Uploaded image shown by image and image button widgets (null if none)
+  const assetImage = useAssetImage(type === 'image' || type === 'imagebutton' ? props.src : null);
+  const imageScale = type === 'image' && props.zoom ? props.zoom / 256 : 1;
+  const imageContent = assetImage && (
+    <Group clipX={0} clipY={0} clipWidth={props.width} clipHeight={props.height} listening={false}>
+      <Image image={assetImage} width={assetImage.width * imageScale} height={assetImage.height * imageScale} />
+    </Group>
+  );
 
   const renderWidget = () => {
     switch (type) {
@@ -309,16 +318,18 @@ const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, 
               strokeWidth={1}
               cornerRadius={3}
             />
-            <Text
-              text={props.src ? '🖼️' : 'No Image'}
-              width={props.width}
-              height={props.height}
-              align="center"
-              verticalAlign="middle"
-              fill={props.src ? undefined : '#999999'}
-              fontSize={props.src ? Math.min(props.width, props.height) / 2 : 12}
-              fontFamily="Arial"
-            />
+            {imageContent || (
+              <Text
+                text={props.src ? '🖼️' : 'No Image'}
+                width={props.width}
+                height={props.height}
+                align="center"
+                verticalAlign="middle"
+                fill={props.src ? undefined : '#999999'}
+                fontSize={props.src ? Math.min(props.width, props.height) / 2 : 12}
+                fontFamily="Arial"
+              />
+            )}
           </>
         );
 
@@ -459,7 +470,7 @@ const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, 
               shadowBlur={isSelected ? 10 : 0}
               shadowColor="blue"
             />
-            {props.src ? (
+            {imageContent || (props.src ? (
               <Text
                 text="🖼️"
                 width={props.width}
@@ -477,7 +488,7 @@ const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, 
                 fill="rgba(255, 255, 255, 0.3)"
                 cornerRadius={3}
               />
-            )}
+            ))}
             <Text
               text={props.text || 'Button'}
               y={props.height - 35}

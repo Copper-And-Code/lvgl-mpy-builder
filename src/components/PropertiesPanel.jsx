@@ -7,6 +7,7 @@ import StyleEditor from './StyleEditor';
 
 const PropertiesPanel = () => {
   const selectedWidget = useStore(selectSelectedWidget);
+  const imageAssets = useStore((state) => state.assets.images);
   const { updateWidget, renameWidget, updateWidgetEvents, updateWidgetAnimations, updateWidgetStyles, deleteWidget, duplicateWidget } = useStore(
     useShallow((state) => ({
       updateWidget: state.updateWidget,
@@ -60,6 +61,26 @@ const PropertiesPanel = () => {
               value={value || ''}
               onChange={(e) => handlePropertyChange(name, e.target.value)}
             />
+          </div>
+        );
+
+      case 'image':
+        // Name of an image of the Asset Manager (embedded in the code) or a file path
+        return (
+          <div key={name} className="property-field">
+            <label>{label}</label>
+            <input
+              type="text"
+              list="asset-image-names"
+              value={value || ''}
+              placeholder="Image from the Asset Manager or file path"
+              onChange={(e) => handlePropertyChange(name, e.target.value)}
+            />
+            <datalist id="asset-image-names">
+              {imageAssets.map((asset) => (
+                <option key={asset.id} value={asset.name} />
+              ))}
+            </datalist>
           </div>
         );
 

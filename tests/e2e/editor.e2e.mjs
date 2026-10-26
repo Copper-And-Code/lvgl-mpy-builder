@@ -150,6 +150,41 @@ describe('LVGL editor (Electron)', () => {
     await page.click('.modal-close');
   });
 
+  it('embeds an uploaded image in the generated code and shows it on the canvas', async () => {
+    await page.click('button:has-text("Assets")');
+    await page.locator('.asset-manager input[type="file"]').setInputFiles(path.join(ROOT, 'tests/fixtures/images/red-40x30.png'));
+    await page.locator('.asset-manager .asset-name', { hasText: 'red-40x30.png' }).waitFor();
+    await page.click('.asset-manager .btn-close');
+
+    await page.click('button[title^="Add Image ("]');
+    await property('Image').fill('red-40x30.png');
+    await property('X Position').fill('400');
+    await property('Y Position').fill('300');
+
+    // The canvas draws the decoded image: sample a pixel inside it
+    const box = await canvas();
+    const pixel = await page.evaluate(
+      ({ x, y }) => {
+        const layer = document.querySelector('.konvajs-content canvas');
+        const scale = layer.width / layer.getBoundingClientRect().width;
+        return Array.from(layer.getContext('2d').getImageData(Math.round(x * scale), Math.round(y * scale), 1, 1).data);
+      },
+      { x: 410, y: 310 }
+    );
+    assert.deepEqual(pixel.slice(0, 3), [220, 30, 30], 'red pixel of the image on the canvas');
+    assert.ok(box);
+
+    await page.click('button:has-text("Export Code")');
+    await page.locator('.export-controls select').first().selectOption('c');
+    const code = page.locator('.code-preview code');
+    await code.filter({ hasText: 'img_red_40x30' }).waitFor();
+    const text = await code.textContent();
+    assert.match(text, /static const lv_image_dsc_t img_red_40x30 = \{/);
+    assert.match(text, /\.header\.w = 40,/);
+    assert.match(text, /lv_image_set_src\(ui_\w+, &img_red_40x30\);/);
+    await page.click('.modal-close');
+  });
+
   it('forbids eval in the renderer (Content Security Policy)', async () => {
     // page.evaluate() itself is not subject to the CSP: use a string timer,
     // which the page evaluates

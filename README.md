@@ -42,58 +42,69 @@ This demonstrates how AI-assisted development can enable developers to build sop
 ```
 lvgl-editor/
 ├── src/
-│   ├── main/              # Electron main process
-│   │   ├── main.js
-│   │   └── preload.js
-│   ├── core/              # Core engine
-│   │   ├── widgetDefinitions.js
-│   │   └── store.js       # Zustand state management
-│   ├── generators/        # Code generators
-│   │   ├── cGenerator.js
-│   │   └── micropythonGenerator.js
-│   ├── components/        # React components
-│   │   ├── Canvas.jsx
-│   │   ├── WidgetRenderer.jsx
-│   │   ├── WidgetPalette.jsx
-│   │   ├── PropertiesPanel.jsx
-│   │   ├── Toolbar.jsx
-│   │   └── CodeExportModal.jsx
-│   └── styles/            # CSS styles
-├── public/                # Static assets
-└── package.json
+│   ├── main/                  # Electron main process
+│   │   ├── main.js            # window, menu, IPC
+│   │   ├── preload.js         # API exposed to the renderer
+│   │   ├── templateStore.js   # bundled and customized code templates
+│   │   └── templateRenderer.js # renders the templates (Handlebars)
+│   ├── core/                  # editor model
+│   │   ├── store.js           # Zustand store (pages are the source of truth, per-page undo)
+│   │   ├── projectModel.js    # hierarchy and LVGL-like coordinates
+│   │   ├── projectValidation.js
+│   │   ├── dialogs.js         # in-app dialogs and notifications
+│   │   └── widgetDefinitions.js
+│   ├── generators/            # code generation
+│   │   ├── core/              # widgets described once, emitted as C or MicroPython
+│   │   └── templateLoader.js
+│   ├── components/            # React components
+│   └── styles/
+├── templates/{unix,stm32,esp32}/ # c_template.hbs, micropython_template.hbs
+├── tests/                     # Vitest unit tests, toolchain tests, e2e (Playwright + Electron)
+└── scripts/lvgl-api/          # extraction of the LVGL API reference data
 ```
 
 ## Technology Stack
 
-- **Frontend**: React 18 + Vite
-- **Desktop**: Electron
-- **Canvas**: React-Konva (based on Konva.js)
-- **State Management**: Zustand
-- **Code Generation**: Template-based generators
-- **Styling**: CSS modules
+- **Desktop**: Electron 45 (sandboxed renderer, strict Content Security Policy), packaged with Electron Forge 8
+- **Frontend**: React 19 + Vite 8
+- **Canvas**: react-konva 19 (Konva 10)
+- **State Management**: Zustand 5
+- **Code Generation**: one widget description emitted as C or MicroPython, rendered with Handlebars templates in the main process
+- **Tests**: Vitest 5, Playwright (driving Electron), gcc and the lv_micropython firmware in CI
+- **Linting**: ESLint 10
 
 ## Installation
 
 ### Prerequisites
-- Node.js 18 or higher
-- npm or yarn
+- Node.js 22.12 or higher
+- npm
 
 ### Setup
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/lvgl-editor.git
-cd lvgl-editor
+git clone https://github.com/Copper-And-Code/lvgl-mpy-builder.git
+cd lvgl-mpy-builder
 
-# Install dependencies
+# Install dependencies and download the Electron binary
 npm install
+node node_modules/electron/install.js
 
-# Start in development mode (browser only)
-npm run dev:renderer
-
-# To test the complete Electron app (requires additional setup)
+# Development: Vite dev server + Electron
 npm run dev
+
+# Development in the browser only (no file access, templates cannot be customized)
+npm run dev:renderer
 ```
+
+### Scripts
+
+| Command | Description |
+|---|---|
+| `npm test` | Unit tests (Vitest) |
+| `npm run test:e2e` | Builds the app and runs the end-to-end test in Electron (on Linux without a display: `xvfb-run -a npm run test:e2e`) |
+| `npm run lint` | ESLint |
+| `npm run package` / `npm run make` | Packaged app / zip archive in `out/` |
 
 ## Usage
 
@@ -364,16 +375,10 @@ Standard dropdown selection menus:
 
 #### Image Widget
 Display images in your interface:
-- **Image Source**: Support for image URLs
-- **Fit Modes**: Contain, cover, or fill
-- **Placeholder**: Visual placeholder when no image is set
-- **Background Color**: Configurable background
+- **Image**: the name of a PNG or JPEG uploaded in the Asset Manager (shown on the canvas and embedded in the generated code), or a file path read through an LVGL file system driver (e.g. `A:images/logo.png`)
+- **Rotation, zoom, pivot, antialiasing**
 
-**Properties:**
-- Image source URL
-- Object fit mode
-- Background color
-- Width/height
+Embedded images keep their original PNG/JPEG bytes in an `lv_image_dsc_t` and are decoded by LVGL at run time: in C enable `LV_USE_LODEPNG` (PNG) or `LV_USE_TJPGD` and `LV_USE_FS_MEMFS` (JPEG) in `lv_conf.h`; the default lv_micropython firmware already includes both decoders.
 
 #### Image Button Widget
 Combine images with interactive buttons:
@@ -383,7 +388,7 @@ Combine images with interactive buttons:
 - **Click Events**: Full event support
 
 **Properties:**
-- Image source URL
+- Image (as for the Image widget)
 - Button text
 - Background and text colors
 - Corner radius

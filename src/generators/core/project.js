@@ -7,6 +7,7 @@ import { CEmitter, PythonEmitter, commentText } from './emit';
 import { IdentifierAllocator, sanitizeIdentifier } from './identifiers';
 import { v } from './values';
 import { buildWidgetOps } from './widgets';
+import { cByteLines, imageInfo, parseDataUrl } from './images';
 
 // Event codes valid in LVGL 9.3 and 9.6 that make sense on a widget
 export const EVENT_CODES = [
@@ -119,18 +120,34 @@ export function buildProjectCode(projectData, language) {
 
   const handlers = new Map(); // name -> { name, branches: Map(eventCode -> code) }
   const handlersByRequest = new Map(); // requested name -> handler names
-  const images = new Map();
+  // Images of the Asset Manager, by name, are embedded in the code; any other
+  // source is a file path
+  const assets = new Map((projectData.assets?.images ?? []).map((asset) => [asset.name, asset]));
+  const embedded = new Map(); // source -> { symbol, name, info, data }
+  const filePaths = new Set();
+  const unsupported = new Set();
   let opaHelper = null;
 
   const context = {
     language,
     temp: (base) => ids.allocate(base, 'tmp'),
     image: (source) => {
-      if (!images.has(source)) {
-        const file = String(source).split(/[\\/]/).pop().replace(/\.[^.]*$/, '');
-        images.set(source, ids.allocate(`img_${file}`, 'img'));
+      if (embedded.has(source)) return v.image(source, embedded.get(source).symbol);
+      const asset = assets.get(source);
+      if (!asset) {
+        filePaths.add(source);
+        return v.image(source);
       }
-      return v.image(source, images.get(source));
+      const data = parseDataUrl(asset.data);
+      const info = data && imageInfo(data.bytes);
+      if (!info) {
+        unsupported.add(source);
+        return null; // the call is skipped
+      }
+      const file = String(source).replace(/\.[^.]*$/, '');
+      const symbol = ids.allocate(`img_${file}`, 'img', (n) => [`${n}_data`]);
+      embedded.set(source, { symbol, name: source, info, data });
+      return v.image(source, symbol);
     },
     callbackFor: (widget, event) => {
       const eventCode = String(event.type ?? '').replace(/^LV_EVENT_/, '');
@@ -187,9 +204,10 @@ export function buildProjectCode(projectData, language) {
     body: renderHandlerBody(handler, language),
   }));
 
+  const images = { embedded: [...embedded.values()], filePaths: [...filePaths], unsupported: [...unsupported] };
   const declarations = language === 'c'
-    ? cDeclarations({ widgetNames: [...widgetNames], fonts, images: [...images.values()], opaHelper })
-    : pythonDeclarations({ fonts, images: [...images.keys()] });
+    ? cDeclarations({ widgetNames: [...widgetNames], fonts, images, opaHelper })
+    : pythonDeclarations({ fonts, images });
 
   // `model` exposes the language-neutral operations (used by the API tests)
   const model = { pages: pages.map((page) => ({ name: page.name, nodes: page.nodes })) };
@@ -202,12 +220,22 @@ function cDeclarations({ widgetNames, fonts, images, opaHelper }) {
     const sizes = [...fonts].sort((a, b) => a - b);
     parts.push(`/* Fonts used: enable ${sizes.map((s) => `LV_FONT_MONTSERRAT_${s}`).join(', ')} in lv_conf.h */`);
   }
-  if (images.length) {
+  parts.push(...imageNotes(images, '/*', ' */'));
+  images.embedded.forEach(({ symbol, name, info, data }) => {
+    const png = info.format === 'png';
     parts.push(
-      '/* Images: convert them with LVGL\'s scripts/LVGLImage.py and add the generated .c files to the build */\n' +
-        images.map((symbol) => `LV_IMAGE_DECLARE(${symbol});`).join('\n')
+      `/* Image "${commentText(name)}" (${info.width}x${info.height} ${png ? 'PNG' : 'JPEG'}), decoded at run time: ` +
+        `enable ${png ? 'LV_USE_LODEPNG' : 'LV_USE_TJPGD and LV_USE_FS_MEMFS'} in lv_conf.h */\n` +
+        `static const uint8_t ${symbol}_data[] = {\n${cByteLines(data.bytes).map((line) => `    ${line}`).join('\n')}\n};\n` +
+        `static const lv_image_dsc_t ${symbol} = {\n` +
+        `    .header.magic = LV_IMAGE_HEADER_MAGIC,\n` +
+        `    .header.cf = ${png ? 'LV_COLOR_FORMAT_RAW_ALPHA' : 'LV_COLOR_FORMAT_RAW'},\n` +
+        `    .header.w = ${info.width},\n` +
+        `    .header.h = ${info.height},\n` +
+        `    .data_size = sizeof(${symbol}_data),\n` +
+        `    .data = ${symbol}_data,\n};`
     );
-  }
+  });
   if (widgetNames.length) {
     parts.push(
       '/* Widget handles (use `extern lv_obj_t * ui_<name>;` to access them from other files) */\n' +
@@ -222,15 +250,34 @@ function cDeclarations({ widgetNames, fonts, images, opaHelper }) {
   return parts.join('\n\n');
 }
 
+function imageNotes(images, open, close) {
+  const notes = [];
+  if (images.filePaths.length) {
+    notes.push(`${open} Images loaded from files need an LVGL file system driver: ${images.filePaths.map(commentText).join(', ')}${close}`);
+  }
+  if (images.unsupported.length) {
+    notes.push(`${open} Not generated (only PNG and JPEG images are supported): ${images.unsupported.map(commentText).join(', ')}${close}`);
+  }
+  return notes;
+}
+
 function pythonDeclarations({ fonts, images }) {
   const parts = [];
   if (fonts.size) {
     const sizes = [...fonts].sort((a, b) => a - b);
     parts.push(`# Fonts used: ${sizes.map((s) => `lv.font_montserrat_${s}`).join(', ')} (font sizes are mapped to the ones in the default lv_micropython build: 14, 16, 24)`);
   }
-  if (images.length) {
-    parts.push(`# Images are loaded from these paths through an LVGL file system driver: ${images.map((src) => commentText(src)).join(', ')}`);
-  }
+  parts.push(...imageNotes(images, '#', ''));
+  if (images.embedded.length) parts.push('import binascii');
+  images.embedded.forEach(({ symbol, name, info, data }) => {
+    const png = info.format === 'png';
+    parts.push(
+      `# Image "${commentText(name)}" (${info.width}x${info.height} ${png ? 'PNG' : 'JPEG'}), decoded at run time by LVGL\n` +
+        `${symbol}_data = binascii.a2b_base64("${data.base64}")\n` +
+        `${symbol} = lv.image_dsc_t({"header": {"magic": lv.IMAGE_HEADER_MAGIC, "cf": lv.COLOR_FORMAT.${png ? 'RAW_ALPHA' : 'RAW'}, ` +
+        `"w": ${info.width}, "h": ${info.height}}, "data_size": len(${symbol}_data), "data": ${symbol}_data})`
+    );
+  });
   parts.push('# Created widgets, by name (e.g. objects["ok_button"])\nobjects = {}');
   return parts.join('\n');
 }

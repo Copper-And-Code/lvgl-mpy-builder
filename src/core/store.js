@@ -346,9 +346,13 @@ const useStore = create((set, get) => ({
   // -------------------------------------------------------------------------
   // Assets
 
+  /** Add an asset; its name is made unique, since widgets refer to images by name. */
   addAsset: (type, asset) =>
     set((state) => ({
-      assets: { ...state.assets, [type]: [...state.assets[type], { ...asset, id: uuidv4() }] },
+      assets: {
+        ...state.assets,
+        [type]: [...state.assets[type], { ...asset, id: uuidv4(), name: uniqueName(asset.name, state.assets[type]) }],
+      },
     })),
 
   removeAsset: (type, assetId) =>

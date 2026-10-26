@@ -130,9 +130,7 @@ export class CEmitter extends BaseEmitter {
       case 'constant': return `LV_${value.name}`;
       case 'animEnable': return value.value ? 'LV_ANIM_ON' : 'LV_ANIM_OFF';
       case 'animPath': return `lv_anim_path_${value.name}`;
-      case 'image':
-        this.context.images.add(value.symbol);
-        return `&${value.symbol}`;
+      case 'image': return value.symbol ? `&${value.symbol}` : cString(value.source);
       case 'point': return `{${value.x}, ${value.y}}`;
       default: throw new Error(`Unknown value kind ${value.k}`);
     }
@@ -183,7 +181,7 @@ export class PythonEmitter extends BaseEmitter {
       case 'constant': return `lv.${value.name}`;
       case 'animEnable': return value.value ? 'True' : 'False';
       case 'animPath': return `lv.anim_t.path_${value.name}`;
-      case 'image': return pyString(value.source);
+      case 'image': return value.symbol ?? pyString(value.source);
       case 'point': return `{"x": ${value.x}, "y": ${value.y}}`;
       default: throw new Error(`Unknown value kind ${value.k}`);
     }
