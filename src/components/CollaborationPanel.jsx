@@ -3,6 +3,7 @@ import { Users, UserPlus, Link, Unlink, Circle } from 'lucide-react';
 import collaboration from '../core/collaboration';
 import '../styles/CollaborationPanel.css';
 import { notify } from '../core/dialogs';
+import { ExperimentalBadge, ExperimentalNotice } from './ExperimentalNotice';
 
 export default function CollaborationPanel() {
   const [isOpen, setIsOpen] = useState(false);
@@ -96,9 +97,11 @@ export default function CollaborationPanel() {
             <h3>
               <Users size={18} />
               Collaboration
+              <ExperimentalBadge />
             </h3>
             <button onClick={() => setIsOpen(false)}>×</button>
           </div>
+          <ExperimentalNotice feature="collaboration" />
 
           <div className="collaboration-status">
             <div className="status-row">

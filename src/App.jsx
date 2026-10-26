@@ -9,9 +9,11 @@ import PluginManager from './components/PluginManager';
 import CloudSyncPanel from './components/CloudSync';
 import CollaborationPanel from './components/CollaborationPanel';
 import DialogHost from './components/DialogHost';
+import { useFeatures } from './core/features';
 import './styles/App.css';
 
 function App() {
+  const features = useFeatures((state) => state.enabled);
   return (
     <div className="app">
       <Toolbar />
@@ -39,9 +41,10 @@ function App() {
       </div>
 
       <ComponentLibrary />
-      <CloudSyncPanel />
-      <CollaborationPanel />
-      <PluginManager />
+      {/* Experimental features, enabled in Settings */}
+      {features.cloudSync && <CloudSyncPanel />}
+      {features.collaboration && <CollaborationPanel />}
+      {features.plugins && <PluginManager />}
       <DialogHost />
 
       <footer className="status-bar">

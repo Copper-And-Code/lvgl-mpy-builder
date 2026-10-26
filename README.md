@@ -220,11 +220,11 @@ Notes on the targets:
 - [x] Asset management (images, fonts)
 - [ ] Preview on real device
 
-### v2.0 ✅
-- [x] Collaborative editing
+### v2.0
 - [x] Component library
-- [x] Plugin system
-- [x] Cloud sync
+- [ ] Plugin system (experimental, external plugins disabled)
+- [ ] Cloud sync (experimental, local storage only)
+- [ ] Collaborative editing (experimental, simulated)
 
 ### v2.1 ✅
 - [x] Advanced widget library (Chart, Roller, Dropdown, Image, Image Button)
@@ -261,72 +261,16 @@ The component library allows you to save and reuse groups of widgets as custom c
 3. Click "Save Component" and enter the details
 4. To insert a component, click "+" next to the desired component
 
-### 🔌 Plugin System
-Extensible system for loading external plugins that add new functionality:
+### 🧪 Experimental features: plugins, cloud sync, collaborative editing
+These three features are **incomplete**: they are disabled by default and can be enabled in **Settings → Experimental features**. When enabled, their panels show an "Experimental" badge and their current limitations.
 
-- **Plugin Loading**: Load plugins from URL or JavaScript code
-- **Custom Widgets**: Plugins can add new widget types
-- **Custom Generators**: Add support for new output languages
-- **Hook System**: Plugins can intercept editor events
-- **Plugin Management**: Enable/disable plugins dynamically
+| Feature | Current state |
+|---|---|
+| 🔌 Plugins | The plugin API exists (hooks, custom widgets, generators), but loading external plugins (URL, file, pasted code) is **disabled**: the code would run unsandboxed in the editor. There are no built-in plugins yet. |
+| ☁️ Cloud sync | One provider only: projects are saved in the app's local storage, **on this computer**. No online service, no automatic sync. |
+| 👥 Collaborative editing | **Simulated**: there is no collaboration server and no changes are exchanged with other users. |
 
-**Plugin Structure:**
-```javascript
-module.exports.default = {
-  id: 'my-plugin',
-  name: 'My Plugin',
-  version: '1.0.0',
-  description: 'Plugin description',
-
-  initialize() {
-    // Setup code
-  },
-
-  hooks: {
-    'widget:created': (widget) => {
-      // Called when a widget is created
-      return widget;
-    }
-  },
-
-  widgets: [
-    // Custom widget definitions
-  ],
-
-  generators: [
-    // Custom code generators
-  ]
-};
-```
-
-### ☁️ Cloud Sync
-Sync your projects with the cloud to access them from any device:
-
-- **Multiple Providers**: Support for different cloud providers (Local Storage included)
-- **Auto-Sync**: Automatic synchronization every 5 minutes (optional)
-- **Project Management**: List, load and delete projects from the cloud
-- **Automatic Backup**: Auto-save to never lose your work
-
-**Available Providers:**
-- Local Storage (demo/offline)
-- Custom providers via API
-
-### 👥 Collaborative Editing
-Work on projects in real-time with other users:
-
-- **Multi-User Sessions**: Create or join collaborative sessions
-- **Real-Time Sync**: See other users' changes in real-time
-- **User Awareness**: View who is connected with distinctive colors
-- **Cursor Tracking**: See where other users are working
-- **Conflict Resolution**: Automatic conflict management system
-
-**Getting started:**
-1. Click the "Collaboration" button (bottom right)
-2. Choose "Join Session"
-3. Enter server URL and session ID (or generate a new one)
-4. Share the session ID with collaborators
-
-**Note:** Real-time collaboration requires a WebSocket server. The current version includes a demo implementation for local development.
+Making them real requires a plugin sandbox, an online storage provider and a collaboration server (e.g. Yjs over WebSocket); see `docs/CODE_REVIEW_PLAN.md`, phase 4.
 
 ## v2.1 Features
 

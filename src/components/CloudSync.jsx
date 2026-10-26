@@ -4,6 +4,7 @@ import cloudSync from '../core/cloudSync';
 import useStore from '../core/store';
 import '../styles/CloudSync.css';
 import { notify, showConfirm } from '../core/dialogs';
+import { ExperimentalBadge, ExperimentalNotice } from './ExperimentalNotice';
 
 export default function CloudSyncPanel() {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,7 +15,6 @@ export default function CloudSyncPanel() {
   const [showProjectsDialog, setShowProjectsDialog] = useState(false);
   const [cloudProjects, setCloudProjects] = useState([]);
   const [apiKey, setApiKey] = useState('');
-  const [autoSync, setAutoSync] = useState(false);
 
   const getProjectData = useStore((state) => state.getProjectData);
   const loadProject = useStore((state) => state.loadProject);
@@ -47,7 +47,6 @@ export default function CloudSyncPanel() {
     try {
       await cloudSync.disconnect();
       setStatus(cloudSync.getStatus());
-      setAutoSync(false);
     } catch (error) {
       notify(`Disconnect failed: ${error.message}`, { kind: 'error' });
     }
@@ -98,12 +97,6 @@ export default function CloudSyncPanel() {
     }
   };
 
-  const handleToggleAutoSync = () => {
-    const newAutoSync = !autoSync;
-    setAutoSync(newAutoSync);
-    cloudSync.setAutoSync(newAutoSync);
-  };
-
   const getStatusColor = () => {
     switch (status.status) {
       case 'connected': return '#4CAF50';
@@ -143,9 +136,11 @@ export default function CloudSyncPanel() {
             <h3>
               <Cloud size={18} />
               Cloud Sync
+              <ExperimentalBadge />
             </h3>
             <button onClick={() => setIsOpen(false)}>×</button>
           </div>
+          <ExperimentalNotice feature="cloudSync" />
 
           <div className="cloud-status">
             <div className="status-indicator" style={{ background: getStatusColor() }} />
@@ -184,17 +179,6 @@ export default function CloudSyncPanel() {
                   <Download size={16} />
                   Load from Cloud
                 </button>
-              </div>
-
-              <div className="cloud-settings">
-                <label className="setting-item">
-                  <input
-                    type="checkbox"
-                    checked={autoSync}
-                    onChange={handleToggleAutoSync}
-                  />
-                  <span>Auto-sync (every 5 minutes)</span>
-                </label>
               </div>
 
               <div className="cloud-disconnect">

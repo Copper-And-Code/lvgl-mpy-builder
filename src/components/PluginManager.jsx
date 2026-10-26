@@ -6,6 +6,7 @@ import pluginSystem, {
 } from '../core/pluginSystem';
 import '../styles/PluginManager.css';
 import { notify, showConfirm } from '../core/dialogs';
+import { ExperimentalBadge, ExperimentalNotice } from './ExperimentalNotice';
 
 export default function PluginManager() {
   const [isOpen, setIsOpen] = useState(false);
@@ -119,9 +120,11 @@ export default function PluginManager() {
             <h3>
               <Puzzle size={18} />
               Plugin Manager
+              <ExperimentalBadge />
             </h3>
             <button onClick={() => setIsOpen(false)}>×</button>
           </div>
+          <ExperimentalNotice feature="plugins" />
 
           <div className="plugin-manager-toolbar">
             <button

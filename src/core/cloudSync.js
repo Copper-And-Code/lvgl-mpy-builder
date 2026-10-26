@@ -9,8 +9,6 @@ class CloudSync {
     this.activeProvider = null;
     this.syncStatus = 'disconnected'; // 'disconnected', 'connected', 'syncing', 'error'
     this.lastSyncTime = null;
-    this.autoSync = false;
-    this.syncInterval = null;
   }
 
   /**
@@ -84,15 +82,9 @@ class CloudSync {
     if (!this.activeProvider) return;
 
     try {
-      if (this.syncInterval) {
-        clearInterval(this.syncInterval);
-        this.syncInterval = null;
-      }
-
       await this.activeProvider.disconnect();
       this.activeProvider = null;
       this.syncStatus = 'disconnected';
-      this.autoSync = false;
       console.log('Disconnected from cloud provider');
     } catch (error) {
       console.error('Error disconnecting:', error);
@@ -189,25 +181,6 @@ class CloudSync {
   }
 
   /**
-   * Enable/disable auto-sync
-   */
-  setAutoSync(enabled, intervalMinutes = 5) {
-    this.autoSync = enabled;
-
-    if (this.syncInterval) {
-      clearInterval(this.syncInterval);
-      this.syncInterval = null;
-    }
-
-    if (enabled && this.activeProvider) {
-      this.syncInterval = setInterval(() => {
-        console.log('Auto-sync triggered');
-        // Note: actual implementation would need access to store
-      }, intervalMinutes * 60 * 1000);
-    }
-  }
-
-  /**
    * Get current status
    */
   getStatus() {
@@ -215,7 +188,6 @@ class CloudSync {
       status: this.syncStatus,
       provider: this.activeProvider?.name || null,
       lastSync: this.lastSyncTime,
-      autoSync: this.autoSync,
     };
   }
 }
@@ -226,8 +198,8 @@ const cloudSync = new CloudSync();
 // Register built-in localStorage provider (for demo/offline use)
 cloudSync.registerProvider({
   id: 'local-storage',
-  name: 'Local Storage',
-  description: 'Save projects in browser local storage',
+  name: 'This computer',
+  description: 'Projects saved in the app\u2019s local storage, on this computer only',
   icon: '💾',
 
   async connect() {

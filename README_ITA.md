@@ -181,11 +181,11 @@ def my_ui_create(parent=None):
 - [x] Asset management (images, fonts)
 - [ ] Preview sul dispositivo reale
 
-### v2.0 ✅
-- [x] Collaborative editing
+### v2.0
 - [x] Component library
-- [x] Plugin system
-- [x] Cloud sync
+- [ ] Plugin system (sperimentale, plugin esterni disattivati)
+- [ ] Cloud sync (sperimentale, solo storage locale)
+- [ ] Collaborative editing (sperimentale, simulato)
 
 ## Funzionalità v2.0
 
@@ -203,72 +203,16 @@ La libreria di componenti permette di salvare e riutilizzare gruppi di widget co
 3. Clicca "Save Component" e inserisci i dettagli
 4. Per inserire un componente, clicca su "+" accanto al componente desiderato
 
-### 🔌 Plugin System
-Sistema estensibile per caricare plugin esterni che aggiungono nuove funzionalità:
+### 🧪 Funzionalità sperimentali: plugin, cloud sync, collaborazione
+Queste tre funzionalità sono **incomplete**: sono disattivate di default e si attivano in **Settings → Experimental features**. Quando sono attive, i loro pannelli mostrano il badge "Experimental" e i limiti attuali.
 
-- **Caricamento Plugin**: Carica plugin da URL o codice JavaScript
-- **Custom Widgets**: I plugin possono aggiungere nuovi tipi di widget
-- **Custom Generators**: Aggiungi supporto per nuovi linguaggi di output
-- **Hook System**: I plugin possono intercettare eventi dell'editor
-- **Gestione Plugin**: Abilita/disabilita plugin dinamicamente
+| Funzionalità | Stato attuale |
+|---|---|
+| 🔌 Plugin | L'API dei plugin esiste (hook, widget e generatori personalizzati), ma il caricamento di plugin esterni (URL, file, codice incollato) è **disattivato**: il codice girerebbe nell'editor senza sandbox. Non ci sono ancora plugin integrati. |
+| ☁️ Cloud sync | Un solo provider: i progetti vengono salvati nello storage locale dell'app, **su questo computer**. Nessun servizio online, nessuna sincronizzazione automatica. |
+| 👥 Collaborazione | **Simulata**: non esiste un server di collaborazione e nessuna modifica viene scambiata con altri utenti. |
 
-**Struttura Plugin:**
-```javascript
-module.exports.default = {
-  id: 'my-plugin',
-  name: 'My Plugin',
-  version: '1.0.0',
-  description: 'Plugin description',
-
-  initialize() {
-    // Setup code
-  },
-
-  hooks: {
-    'widget:created': (widget) => {
-      // Called when a widget is created
-      return widget;
-    }
-  },
-
-  widgets: [
-    // Custom widget definitions
-  ],
-
-  generators: [
-    // Custom code generators
-  ]
-};
-```
-
-### ☁️ Cloud Sync
-Sincronizza i tuoi progetti con il cloud per accedervi da qualsiasi dispositivo:
-
-- **Provider Multipli**: Supporto per diversi provider cloud (Local Storage incluso)
-- **Auto-Sync**: Sincronizzazione automatica ogni 5 minuti (opzionale)
-- **Gestione Progetti**: Lista, carica ed elimina progetti dal cloud
-- **Backup Automatico**: Salvataggio automatico per non perdere il lavoro
-
-**Provider Disponibili:**
-- Local Storage (demo/offline)
-- Custom providers via API
-
-### 👥 Collaborative Editing
-Lavora sui progetti in tempo reale con altri utenti:
-
-- **Sessioni Multi-Utente**: Crea o unisciti a sessioni collaborative
-- **Real-Time Sync**: Vedi le modifiche degli altri utenti in tempo reale
-- **User Awareness**: Visualizza chi è connesso con colori distintivi
-- **Cursor Tracking**: Vedi dove stanno lavorando gli altri utenti
-- **Conflict Resolution**: Sistema di gestione conflitti automatico
-
-**Come iniziare:**
-1. Clicca sul pulsante "Collaboration" (in basso a destra)
-2. Scegli "Join Session"
-3. Inserisci server URL e session ID (o generane uno nuovo)
-4. Condividi il session ID con i collaboratori
-
-**Nota:** Per la collaborazione in tempo reale è necessario un server WebSocket. La versione attuale include un'implementazione demo per sviluppo locale.
+Per renderle reali servono una sandbox per i plugin, un provider di archiviazione online e un server di collaborazione (ad esempio Yjs su WebSocket); vedi `docs/CODE_REVIEW_PLAN.md`, fase 4.
 
 ## Contribuire
 

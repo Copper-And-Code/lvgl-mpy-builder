@@ -185,6 +185,27 @@ describe('LVGL editor (Electron)', () => {
     await page.click('.modal-close');
   });
 
+  it('shows the experimental features only when enabled in Settings', async () => {
+    const toggles = ['.cloud-sync-toggle', '.collaboration-toggle', '.plugin-manager-toggle'];
+    for (const toggle of toggles) assert.equal(await page.locator(toggle).count(), 0, `${toggle} hidden by default`);
+    assert.equal(await page.locator('.component-library-toggle').count(), 1, 'component library is not experimental');
+
+    await page.click('button:has-text("Settings")');
+    const cloudSync = page.locator('.settings-features label', { hasText: 'Cloud sync' }).locator('input');
+    await cloudSync.check();
+    await page.click('.settings-dialog .modal-close');
+
+    await page.click('.cloud-sync-toggle');
+    await page.locator('.cloud-sync-panel .experimental-badge').waitFor();
+    assert.match(await page.locator('.cloud-sync-panel .experimental-notice').textContent(), /local storage, on this computer/);
+    assert.equal(await page.locator('.cloud-sync-panel').getByText('Auto-sync').count(), 0, 'no auto-sync option');
+
+    await page.click('button:has-text("Settings")');
+    await cloudSync.uncheck();
+    await page.click('.settings-dialog .modal-close');
+    assert.equal(await page.locator('.cloud-sync-toggle').count(), 0);
+  });
+
   it('forbids eval in the renderer (Content Security Policy)', async () => {
     // page.evaluate() itself is not subject to the CSP: use a string timer,
     // which the page evaluates

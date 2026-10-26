@@ -5,6 +5,7 @@ import { notify, showAlert, showConfirm, warningsMessage } from '../core/dialogs
 import CodeExportModal from './CodeExportModal';
 import TemplateSelector from './TemplateSelector';
 import AssetManager from './AssetManager';
+import SettingsDialog from './SettingsDialog';
 
 const Toolbar = () => {
   const canvasSize = useStore(selectCanvasSize);
@@ -49,6 +50,7 @@ const Toolbar = () => {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [showAssetManager, setShowAssetManager] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   // Width/height being typed; reset when the page size changes (preset, page switch, load)
   const [sizeInputs, setSizeInputs] = useState({ width: canvasSize.width, height: canvasSize.height, for: canvasSize });
   if (sizeInputs.for !== canvasSize) {
@@ -267,6 +269,9 @@ const Toolbar = () => {
           >
             Assets
           </button>
+          <button className="toolbar-btn" onClick={() => setShowSettings(true)} title="Editor settings">
+            Settings
+          </button>
         </div>
 
         <div className="toolbar-section">
@@ -283,6 +288,7 @@ const Toolbar = () => {
       {showExportModal && <CodeExportModal onClose={() => setShowExportModal(false)} />}
       {showTemplateSelector && <TemplateSelector onClose={() => setShowTemplateSelector(false)} />}
       {showAssetManager && <AssetManager onClose={() => setShowAssetManager(false)} />}
+      {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
     </>
   );
 };

@@ -435,6 +435,33 @@ Le correzioni vengono mostrate all'utente al caricamento.
 
 In alternativa, flag *experimental* disattivato di default e README corretto. **Consiglio di correggere il README in ogni caso**, perché oggi descrive funzioni che non esistono.
 
+#### Stato della fase 4: completata con l'opzione "sperimentali"
+Scelta dell'utente: non implementarle ora, ma marcarle come sperimentali.
+
+**Feature flag:**
+- `src/core/features.js` contiene i flag di `cloudSync`, `collaboration` e `plugins`, **disattivati di default**.
+- La scelta è un'impostazione dell'editor salvata nello storage locale dell'app: non fa parte del progetto. Se lo storage non è disponibile, l'impostazione vale fino alla chiusura dell'app.
+- Si attivano dal nuovo dialog **Settings** nella toolbar, che per ogni funzione spiega i limiti attuali.
+
+**Pannelli:**
+- I pannelli flottanti di queste tre funzioni compaiono solo se attivate.
+- Quando sono visibili mostrano un badge "Experimental" e una nota con i limiti reali:
+  - cloud sync: solo storage locale, su questo computer;
+  - collaborazione: simulata, nessuno scambio di dati;
+  - plugin: caricamento esterno disattivato e nessun plugin integrato.
+
+**Auto-sync rimosso:** l'opzione "Auto-sync (every 5 minutes)" non salvava nulla (il timer scriveva solo un log). Ho tolto sia l'opzione sia il codice morto, e il provider locale ora si chiama "This computer".
+
+**Component library:** resta una funzione normale, perché funziona davvero (fase 2: validazione all'import, inserimento in un solo passo). La libreria **globale** in `userData` non è stata fatta e resta una proposta.
+
+**README** (inglese e italiano): la roadmap v2.0 e la sezione delle funzionalità ora descrivono lo stato reale, con una tabella dei limiti e il rimando a questo piano.
+
+**Test:**
+- unitari dei flag: default, persistenza, valori non validi, assenza dello storage;
+- e2e: pannelli nascosti di default, attivazione da Settings, badge e nota visibili, nessuna opzione di auto-sync, disattivazione.
+
+**Per renderle reali in futuro** restano valide le proposte della tabella qui sopra.
+
 ### Fase 5 — Allineamento a LVGL 9.6 e preparazione a v10 (continuativa)
 1. Generare la **data binding** con `lv_subject_t`, `lv_obj_bind_*` e `lv_label_bind_text` (observer, presenti in 9.6 in `core/lv_observer.h`), così i widget si legano a variabili applicative senza scrivere handler a mano. **Attenzione:** in 9.6 sono deprecati `lv_subject_init_*` e `lv_obj_bind_flag_if_*`/`lv_obj_bind_state_if_*` (vedi `deprecated` in `tests/fixtures/lvgl-c-symbols.json`), quindi prima va individuata l'API che li sostituisce.
 2. Interoperabilità con l'editor ufficiale di LVGL: negli header pubblici di 9.6.0 non c'è un'API XML, quindi prima di pianificare un import/export va verificato dove si trova oggi quel formato.
