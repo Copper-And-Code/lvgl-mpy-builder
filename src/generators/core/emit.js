@@ -119,6 +119,7 @@ export class CEmitter extends BaseEmitter {
       case 'enum': return `LV_${value.enumName}_${value.member}`;
       case 'sel': return [`LV_PART_${value.part}`, value.state && `LV_STATE_${value.state}`].filter(Boolean).join(' | ');
       case 'font': {
+        if (value.symbol) return `&${value.symbol}`;
         const size = nearestFontSize(value.size, C_FONT_SIZES);
         this.context.fonts.add(size);
         return `&lv_font_montserrat_${size}`;
@@ -170,6 +171,7 @@ export class PythonEmitter extends BaseEmitter {
       case 'enum': return pythonEnumPath(value.enumName, value.member);
       case 'sel': return [`lv.PART.${value.part}`, value.state && `lv.STATE.${value.state}`].filter(Boolean).join(' | ');
       case 'font': {
+        if (value.symbol) return value.symbol;
         const size = nearestFontSize(value.size, MICROPYTHON_FONT_SIZES);
         this.context.fonts.add(size);
         return `lv.font_montserrat_${size}`;

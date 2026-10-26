@@ -41,4 +41,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('write-template', architecture, templateName, content),
   resetTemplate: (architecture, templateName) =>
     ipcRenderer.invoke('reset-template', architecture, templateName),
+  convertFont: (request) => ipcRenderer.invoke('convert-font', request),
 });

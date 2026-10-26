@@ -9,6 +9,7 @@ import { BINDABLE_WIDGETS, DEFAULT_LABEL_FORMAT } from '../core/bindings';
 const PropertiesPanel = () => {
   const selectedWidget = useStore(selectSelectedWidget);
   const imageAssets = useStore((state) => state.assets.images);
+  const fontAssets = useStore((state) => state.assets.fonts);
   const variables = useStore((state) => state.variables);
   const setWidgetBinding = useStore((state) => state.setWidgetBinding);
   const { updateWidget, renameWidget, updateWidgetEvents, updateWidgetAnimations, updateWidgetStyles, deleteWidget, duplicateWidget } = useStore(
@@ -86,6 +87,25 @@ const PropertiesPanel = () => {
             </datalist>
           </div>
         );
+
+      case 'font': {
+        // Font of the Asset Manager, converted for LVGL by the code generator
+        const missing = value && !fontAssets.some((asset) => asset.name === value);
+        return (
+          <div key={name} className="property-field">
+            <label>{label}</label>
+            <select value={value || ''} onChange={(e) => handlePropertyChange(name, e.target.value)}>
+              <option value="">Montserrat (built-in)</option>
+              {fontAssets.map((asset) => (
+                <option key={asset.id} value={asset.name}>
+                  {asset.name}
+                </option>
+              ))}
+              {missing && <option value={value}>{value} (missing)</option>}
+            </select>
+          </div>
+        );
+      }
 
       case 'color':
         return (

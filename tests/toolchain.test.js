@@ -2,6 +2,8 @@
 // unless the paths below are provided (CI sets them, see .github/workflows):
 //   LVGL_96_DIR                LVGL 9.6 source tree (lvgl repository root)
 //   MICROPYTHON_LVGL           lv_micropython unix firmware (ports/unix VARIANT=lvgl)
+//   MICROPYTHON_LVGL_BINFONT   optional: the same firmware with the binary font
+//                              loader (custom fonts), see the README
 
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -14,6 +16,7 @@ import { generateMicroPythonCode } from '../src/generators/micropythonGenerator'
 import { buildProjectCode } from '../src/generators/core/project';
 import { clearTemplateCache } from '../src/generators/templateLoader';
 import { readTemplate } from '../src/main/templateStore';
+import { convertFont } from '../src/main/fontConverter';
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const PROJECTS = { 'all widgets': allWidgetsProject, hostile: hostileProject };
@@ -33,6 +36,7 @@ beforeEach(() => {
   vi.stubGlobal('window', {
     electronAPI: {
       readTemplate: async (architecture, name) => readTemplate({ bundledDir: REPO_ROOT }, architecture, name),
+      convertFont,
     },
   });
 });
@@ -100,6 +104,10 @@ print("RUN_OK", len(objects))
 `;
 }
 
+const FIRMWARES = [
+  ['default', process.env.MICROPYTHON_LVGL],
+  ['binfont', process.env.MICROPYTHON_LVGL_BINFONT],
+].filter(([, file]) => file);
 const firmware = process.env.MICROPYTHON_LVGL;
 
 // CI sets REQUIRE_TOOLCHAIN so that a missing path fails instead of skipping
@@ -107,15 +115,20 @@ describe.runIf(Boolean(process.env.REQUIRE_TOOLCHAIN))('toolchain configuration'
   it('has LVGL 9.6 and the lv_micropython firmware', () => {
     expect(fs.existsSync(path.join(process.env.LVGL_96_DIR ?? '', 'lvgl.h'))).toBe(true);
     expect(fs.existsSync(firmware ?? '')).toBe(true);
+    expect(fs.existsSync(process.env.MICROPYTHON_LVGL_BINFONT ?? '')).toBe(true);
   });
 });
 
-describe.runIf(Boolean(firmware)).each(Object.entries(PROJECTS))('MicroPython runs on lv_micropython: %s project', (label, makeProject) => {
+const PROJECT_FIRMWARES = Object.entries(PROJECTS).flatMap(([label, makeProject]) =>
+  FIRMWARES.map(([name, file]) => [label, name, makeProject, file])
+);
+
+describe.runIf(FIRMWARES.length > 0).each(PROJECT_FIRMWARES)('MicroPython runs on lv_micropython: %s project, %s firmware', (label, _name, makeProject, firmware) => {
   it('creates every page and widget, runs animations and events', async () => {
     const project = makeProject();
     const { baseName, pages } = buildProjectCode(project, 'micropython');
     const widgetCount = project.pages.reduce((sum, page) => sum + page.widgets.length, 0);
-    const file = path.join(workDir, `${label.replace(/\W/g, '_')}.py`);
+    const file = path.join(workDir, `${label.replace(/\W/g, '_')}_${_name}.py`);
     // With variables: change one and print the widgets bound to it
     const bindingCheck = project.variables?.length
       ? [
@@ -128,14 +141,19 @@ describe.runIf(Boolean(firmware)).each(Object.entries(PROJECTS))('MicroPython ru
           'objects["slider_widget"].set_value(7, False)',
           'objects["slider_widget"].send_event(lv.EVENT.VALUE_CHANGED, None)',
           'print("FROM_WIDGET", var_level.get_int())',
+          // Custom font: loaded when the firmware can, Montserrat otherwise
+          '_f = font_dejavusans_latin1_14',
+          '_m = lv.font_montserrat_14',
+          'print("FONT", hasattr(lv, "binfont_create_from_buffer"), (_f.line_height, _f.base_line) != (_m.line_height, _m.base_line))',
         ].join('\n')
       : '';
+    const binfont = spawnSync(firmware, ['-c', 'import lvgl as lv; print(hasattr(lv, "binfont_create_from_buffer"))'], { encoding: 'utf-8' });
     fs.writeFileSync(file, harness(await generateMicroPythonCode(project, 'unix'), baseName, pages.length, bindingCheck));
 
     const result = spawnSync(firmware, [file], { encoding: 'utf-8', timeout: 60000 });
     expect(result.stderr).toBe('');
     const expected = project.variables?.length
-      ? ['BOUND 2 2 2 Level: 2 False False', 'FROM_WIDGET 7', `RUN_OK ${widgetCount}`]
+      ? ['BOUND 2 2 2 Level: 2 False False', 'FROM_WIDGET 7', `FONT ${binfont.stdout.trim()} ${binfont.stdout.trim()}`, `RUN_OK ${widgetCount}`]
       : [`RUN_OK ${widgetCount}`];
     expect(result.stdout.trim().split('\n')).toEqual(expected);
   });

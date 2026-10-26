@@ -287,6 +287,19 @@ describe('pages', () => {
   });
 });
 
+describe('assets', () => {
+  it('gives assets unique names and updates their editable fields only', () => {
+    store().addAsset('fonts', { name: 'Roboto.ttf', data: 'data:font/ttf;base64,AAAA' });
+    store().addAsset('fonts', { name: 'Roboto.ttf', data: 'data:font/ttf;base64,AAAA' });
+    const [first, second] = store().assets.fonts;
+    expect(second.name).not.toBe(first.name);
+
+    store().updateAsset('fonts', first.id, { characters: '°€', id: 'other', name: 'x' });
+    expect(store().assets.fonts[0]).toMatchObject({ id: first.id, name: 'Roboto.ttf', characters: '°€' });
+    expect(store().assets.fonts[1]).toEqual(second);
+  });
+});
+
 describe('component library', () => {
   it('imports components, validating their widgets', () => {
     const warnings = store().importComponentLibrary({

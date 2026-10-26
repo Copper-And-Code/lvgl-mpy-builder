@@ -20,6 +20,13 @@ export function parseDataUrl(url) {
   }
 }
 
+/** Base64 of a byte array. */
+export function toBase64(bytes) {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(binary);
+}
+
 const be16 = (bytes, i) => (bytes[i] << 8) | bytes[i + 1];
 const be32 = (bytes, i) => ((bytes[i] << 24) >>> 0) + (bytes[i + 1] << 16) + (bytes[i + 2] << 8) + bytes[i + 3];
 

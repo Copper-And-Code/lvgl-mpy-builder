@@ -364,7 +364,7 @@ Le correzioni vengono mostrate all'utente al caricamento.
    - **Immagini:** convertirle all'export con `scripts/LVGLImage.py` di LVGL 9.6 (Python 3) in `.c` con `LV_IMAGE_DECLARE` per il target C, oppure in `.bin` o un percorso `"A:..."` per MicroPython.
    - **Font:** generarli con `lv_font_conv`.
 
-#### Stato della fase 3: completata, tranne i font
+#### Stato della fase 3: completata (i font sono stati aggiunti dopo la fase 5, vedi sotto)
 **Dipendenze aggiornate:**
 - Electron 28 → 45 e il deprecato `electron-forge` 5 → `@electron-forge/cli` 8.
 - Vite 5 → 8 e React 18 → 19, con react-konva 19 e Konva 10.
@@ -422,7 +422,7 @@ Le correzioni vengono mostrate all'utente al caricamento.
 **CI:** nuovo job `e2e` (Xvfb, Electron, sandbox abilitata). Non è ancora stato eseguito su GitHub.
 
 **Non fatto:**
-- **Font con `lv_font_conv`:** nessun widget può oggi scegliere un font caricato, perché la proprietà è solo la dimensione del Montserrat. Va prima aggiunta la scelta del font nell'editor, ed è più sensato farlo insieme a una revisione dell'Asset Manager.
+- **Font con `lv_font_conv`:** fatto in seguito, vedi "Font personalizzati" dopo la fase 5.
 - **Avviso residuo di Electron in sviluppo:** con `npm run dev` la CSP di sviluppo mantiene `unsafe-eval` per Vite, e Electron mostra il suo avviso di sicurezza solo in quel caso.
 
 ### Fase 4 — Funzionalità v2.0 fatte davvero, o rimosse (2–4 settimane, da decidere)
@@ -509,6 +509,25 @@ Scelta dell'utente: non implementarle ora, ma marcarle come sperimentali.
 - Quando segnalerà un aggiornamento basterà aggiornare commit e versioni fissati in `ci.yml` e rigenerare i file (`scripts/lvgl-api/README.md`). I test indicheranno i nomi da adattare.
 
 **4. Compatibilità con v10:** il job con `LV_DISABLE_API_MAPPING -Werror=deprecated-declarations` resta attivo in `ci.yml` e gira anche nel workflow settimanale contro l'ultima release.
+
+#### Font personalizzati (completamento della fase 3)
+- **Editor:**
+  - i widget con **Font Size** (e lo span) hanno la proprietà **Font**: Montserrat oppure un font dell'Asset Manager;
+  - l'Asset Manager mostra un'anteprima del font e un campo **Extra characters** per i caratteri impostati a runtime;
+  - il canvas disegna il testo con il font caricato (`FontFace`, la CSP permette già `font-src data:`).
+- **Conversione:**
+  - `lv_font_conv` 1.5.3 (MIT) gira nel main process (`src/main/fontConverter.js`, IPC `convert-font`), con una coda perché il suo stato FreeType è globale e una cache per l'anteprima del codice;
+  - la generazione fa due passate: la prima raccoglie le coppie font/dimensione e i caratteri dei widget, la seconda usa i font convertiti;
+  - ogni font contiene l'ASCII stampabile, i caratteri dei widget che lo usano e gli extra; i caratteri mancanti nel font sono segnalati in un commento;
+  - un font non convertibile ricade sul Montserrat, con un commento che spiega il motivo.
+- **C:** il `lv_font_t` è incluso nel file generato, senza `#include`, senza i rami per LVGL 6–8 e con le tabelle `static` rinominate (più font nello stesso file). Compila con gcc contro LVGL 9.6 con `-Werror=deprecated-declarations`.
+- **MicroPython:**
+  - il firmware non può costruire un `lv_font_t` (le strutture `fmt_txt` non sono esportate), quindi il font binario di LVGL è incluso in base64 e caricato con `lv.binfont_create_from_buffer`;
+  - quella funzione esiste in LVGL 9.3 ma il binding di default non la esporta, perché è generato solo da `lvgl_private.h`. Il codice la usa solo se `hasattr(lv, ...)`, altrimenti ricade sul Montserrat più vicino;
+  - con `-include lvgl.h` nel preprocessing di `micropython.mk` il firmware la esporta: la CI compila anche questa variante e verifica che il font venga caricato;
+  - i font binari compressi mandano in crash LVGL 9.3 al primo disegno: l'editor genera sempre font non compressi;
+  - in LVGL 9.6 `lv_binfont_create_from_buffer` non esiste più (c'è `lv_binfont_create_ex`): andrà rivisto quando lv_micropython passerà a 9.6, e il workflow settimanale lo segnalerà.
+- **Verifica:** 11 test unitari (conversione, rinomina delle tabelle, fallback, caratteri mancanti), il progetto di test usa tre font (uno rotto), toolchain su entrambi i firmware, 1 scenario e2e, e conversione verificata anche dall'app impacchettata (asar).
 
 ### Ordine consigliato
 Fase 0 → Fase 1 → Fase 2 → Fase 3, con Fase 4 e Fase 5 in parallelo o successive. I P0 vanno chiusi prima di qualunque nuova funzionalità.

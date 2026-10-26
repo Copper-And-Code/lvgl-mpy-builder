@@ -5,9 +5,10 @@
 import { indentText } from '../indent';
 import { CEmitter, PythonEmitter, commentText } from './emit';
 import { IdentifierAllocator, sanitizeIdentifier } from './identifiers';
-import { v } from './values';
+import { MICROPYTHON_FONT_SIZES, nearestFontSize, v } from './values';
 import { buildWidgetOps } from './widgets';
-import { cByteLines, imageInfo, parseDataUrl } from './images';
+import { cByteLines, imageInfo, parseDataUrl, toBase64 } from './images';
+import { BASE_CHARACTERS, MAX_FONT_SIZE, MIN_FONT_SIZE, embedCFont, fontNotes, widgetCharacters } from './fonts';
 
 // Event codes valid in LVGL 9.3 and 9.6 that make sense on a widget
 export const EVENT_CODES = [
@@ -92,8 +93,12 @@ function renderHandlerBody(handler, language) {
  * Build everything the templates need for one language.
  * @param {object} projectData - project as saved by the editor
  * @param {'c'|'micropython'} language
+ * @param {object} [options]
+ * @param {Map} [options.fonts] - custom fonts converted by convertFonts(), by
+ *   request key; without them the widgets use Montserrat and `fontRequests`
+ *   lists the fonts to convert
  */
-export function buildProjectCode(projectData, language) {
+export function buildProjectCode(projectData, language, { fonts: convertedFonts = new Map() } = {}) {
   const ids = new IdentifierAllocator();
   const baseName = ids.allocate(projectData.projectName || 'ui', 'ui');
   // Functions defined by the templates
@@ -142,6 +147,9 @@ export function buildProjectCode(projectData, language) {
   const filePaths = new Set();
   const unsupported = new Set();
   let opaHelper = null;
+  // Fonts of the Asset Manager, by name; each (font, size) used is converted
+  const fontAssets = new Map((projectData.assets?.fonts ?? []).map((asset) => [asset.name, asset]));
+  const customFonts = new Map(); // request key -> { key, name, size, symbol, asset, characters }
 
   const context = {
     language,
@@ -164,6 +172,21 @@ export function buildProjectCode(projectData, language) {
       const symbol = ids.allocate(`img_${file}`, 'img', (n) => [`${n}_data`]);
       embedded.set(source, { symbol, name: source, info, data });
       return v.image(source, symbol);
+    },
+    font: (name, size, widget) => {
+      const asset = fontAssets.get(name);
+      if (!asset || typeof asset.data !== 'string') return null;
+      const px = Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, size));
+      const key = `${name}\u0000${px}`;
+      let font = customFonts.get(key);
+      if (!font) {
+        const file = String(name).replace(/\.[^.]*$/, '');
+        const symbol = ids.allocate(`font_${file}_${px}`, 'font', (n) => [`${n}_data`]);
+        font = { key, name, size: px, symbol, asset, characters: new Set(BASE_CHARACTERS + String(asset.characters ?? '')) };
+        customFonts.set(key, font);
+      }
+      for (const char of widgetCharacters(widget)) font.characters.add(char);
+      return convertedFonts.get(key)?.output ? font.symbol : null;
     },
     callbackFor: (widget, event) => {
       const eventCode = String(event.type ?? '').replace(/^LV_EVENT_/, '');
@@ -226,21 +249,30 @@ export function buildProjectCode(projectData, language) {
 
   const images = { embedded: [...embedded.values()], filePaths: [...filePaths], unsupported: [...unsupported] };
   const variableList = [...variables.values()];
+  const custom = [...customFonts.values()].map((font) => ({ ...font, result: convertedFonts.get(font.key) }));
   const declarations = language === 'c'
-    ? cDeclarations({ widgetNames: [...widgetNames], fonts, images, opaHelper, variables: variableList, variablesInit })
-    : pythonDeclarations({ fonts, images, variables: variableList });
+    ? cDeclarations({ widgetNames: [...widgetNames], fonts, custom, images, opaHelper, variables: variableList, variablesInit })
+    : pythonDeclarations({ fonts, custom, images, variables: variableList });
 
+  // Fonts to convert before the second pass (see fonts.js)
+  const fontRequests = [...customFonts.values()].map(({ key, name, size, symbol, asset, characters }) => ({
+    key, name, size, symbol, data: asset.data, characters: [...characters].join(''),
+  }));
   // `model` exposes the language-neutral operations (used by the API tests)
   const model = { pages: pages.map((page) => ({ name: page.name, nodes: page.nodes })) };
-  return { baseName, pages: pagesData, eventCallbacks, declarations, model };
+  return { baseName, pages: pagesData, eventCallbacks, declarations, fontRequests, model };
 }
 
-function cDeclarations({ widgetNames, fonts, images, opaHelper, variables, variablesInit }) {
+function cDeclarations({ widgetNames, fonts, custom, images, opaHelper, variables, variablesInit }) {
   const parts = [];
   if (fonts.size) {
     const sizes = [...fonts].sort((a, b) => a - b);
     parts.push(`/* Fonts used: enable ${sizes.map((s) => `LV_FONT_MONTSERRAT_${s}`).join(', ')} in lv_conf.h */`);
   }
+  parts.push(...fontNotes(custom, '/*', ' */'));
+  custom.filter(({ result }) => result?.output).forEach(({ name, size, symbol, result }) => {
+    parts.push(`/* Font "${commentText(name)}" ${size} px, converted with lv_font_conv */\n${embedCFont(result.output, symbol)}`);
+  });
   parts.push(...imageNotes(images, '/*', ' */'));
   images.embedded.forEach(({ symbol, name, info, data }) => {
     const png = info.format === 'png';
@@ -294,14 +326,39 @@ function imageNotes(images, open, close) {
   return notes;
 }
 
-function pythonDeclarations({ fonts, images, variables }) {
+function pythonDeclarations({ fonts, custom, images, variables }) {
   const parts = [];
+  const converted = custom.filter(({ result }) => result?.output);
+  // Montserrat fonts used instead of custom fonts on firmwares that cannot load them
+  converted.forEach((font) => {
+    font.fallback = nearestFontSize(font.size, MICROPYTHON_FONT_SIZES);
+    fonts.add(font.fallback);
+  });
   if (fonts.size) {
     const sizes = [...fonts].sort((a, b) => a - b);
     parts.push(`# Fonts used: ${sizes.map((s) => `lv.font_montserrat_${s}`).join(', ')} (font sizes are mapped to the ones in the default lv_micropython build: 14, 16, 24)`);
   }
   parts.push(...imageNotes(images, '#', ''));
-  if (images.embedded.length) parts.push('import binascii');
+  parts.push(...fontNotes(custom, '#', ''));
+  if (images.embedded.length || converted.length) parts.push('import binascii');
+  if (converted.length) {
+    parts.push(
+      '# Custom fonts, converted with lv_font_conv. Loading them at run time needs\n' +
+        '# lv.binfont_create_from_buffer, missing in the default lv_micropython build\n' +
+        '# (see the README): without it the nearest Montserrat font is used'
+    );
+  }
+  converted.forEach(({ name, size, symbol, result, fallback }) => {
+    const base64 = toBase64(result.output);
+    parts.push(
+      `# Font "${commentText(name)}" ${size} px\n` +
+        `if hasattr(lv, "binfont_create_from_buffer"):\n` +
+        `    ${symbol}_data = binascii.a2b_base64("${base64}")\n` +
+        `    ${symbol} = lv.binfont_create_from_buffer(${symbol}_data, len(${symbol}_data))\n` +
+        `else:\n` +
+        `    ${symbol} = lv.font_montserrat_${fallback}`
+    );
+  });
   images.embedded.forEach(({ symbol, name, info, data }) => {
     const png = info.format === 'png';
     parts.push(

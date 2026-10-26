@@ -3,6 +3,7 @@ import { Group, Rect, Text, Circle, Line, Image } from 'react-konva';
 import { previewProps } from '../core/previewProps';
 import { contentOffset } from '../core/projectModel';
 import useAssetImage from './useAssetImage';
+import useAssetFont from './useAssetFont';
 import useStore from '../core/store';
 import { boundPreviewProps } from '../core/bindings';
 
@@ -20,6 +21,9 @@ const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, 
   const children = childrenByParent.get(widget.id) ?? [];
   // Uploaded image shown by image and image button widgets (null if none)
   const assetImage = useAssetImage(type === 'image' || type === 'imagebutton' ? props.src : null);
+  // Custom font of the Asset Manager, once loaded (null otherwise)
+  const customFont = useAssetFont(props.font);
+  const fontFamily = customFont ?? 'Arial';
   const imageScale = type === 'image' && props.zoom ? props.zoom / 256 : 1;
   const imageContent = assetImage && (
     <Group clipX={0} clipY={0} clipWidth={props.width} clipHeight={props.height} listening={false}>
@@ -48,7 +52,7 @@ const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, 
               verticalAlign="middle"
               fill={props.textColor}
               fontSize={props.fontSize || 14}
-              fontFamily="Arial"
+              fontFamily={fontFamily}
             />
           </>
         );
@@ -59,7 +63,7 @@ const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, 
             text={props.text || 'Label'}
             fill={props.textColor || '#000000'}
             fontSize={props.fontSize || 14}
-            fontFamily="Arial"
+            fontFamily={fontFamily}
             width={props.width}
             height={props.height}
           />
@@ -134,7 +138,7 @@ const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, 
               y={0}
               fill={props.textColor || '#000000'}
               fontSize={props.fontSize || 14}
-              fontFamily="Arial"
+              fontFamily={fontFamily}
               height={20}
               verticalAlign="middle"
             />
@@ -160,7 +164,7 @@ const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, 
               height={props.height - 10}
               fill={props.text ? props.textColor : '#BDBDBD'}
               fontSize={props.fontSize || 14}
-              fontFamily="Arial"
+              fontFamily={fontFamily}
             />
             {props.password && props.text && (
               <Text
@@ -294,7 +298,7 @@ const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, 
               verticalAlign="middle"
               fill={props.textColor || '#000000'}
               fontSize={props.fontSize || 14}
-              fontFamily="Arial"
+              fontFamily={fontFamily}
             />
             <Text
               text="▼"
@@ -455,7 +459,7 @@ const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, 
                   fill={isSelectedItem ? (props.selectedColor || '#2196F3') : (props.textColor || '#000000')}
                   fontSize={props.fontSize || 16}
                   fontStyle={isSelectedItem ? 'bold' : 'normal'}
-                  fontFamily="Arial"
+                  fontFamily={fontFamily}
                 />
               );
             })}
@@ -502,7 +506,7 @@ const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, 
               verticalAlign="middle"
               fill={props.textColor || '#FFFFFF'}
               fontSize={props.fontSize || 14}
-              fontFamily="Arial"
+              fontFamily={fontFamily}
             />
           </>
         );
@@ -526,7 +530,7 @@ const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, 
               verticalAlign="middle"
               fill={props.textColor || '#000000'}
               fontSize={props.fontSize || 16}
-              fontFamily="monospace"
+              fontFamily={customFont ?? 'monospace'}
             />
             {/* Up/Down arrows */}
             <Text text="▲" x={props.width - 20} y={2} fontSize={10} fill="#666" />
@@ -625,7 +629,7 @@ const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, 
                   fill={props.textColor || '#000000'}
                   fontSize={12}
                   fontStyle="bold"
-                  fontFamily="Arial"
+                  fontFamily={fontFamily}
                 />
                 <Line points={[c * colWidth, 0, c * colWidth, props.height]} stroke="#E0E0E0" strokeWidth={0.5} />
               </React.Fragment>
@@ -645,7 +649,7 @@ const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, 
                     verticalAlign="middle"
                     fill={props.textColor || '#000000'}
                     fontSize={11}
-                    fontFamily="Arial"
+                    fontFamily={fontFamily}
                   />
                 ))}
                 <Line points={[0, (r + 2) * rowHeight, props.width, (r + 2) * rowHeight]} stroke="#E0E0E0" strokeWidth={0.5} />
@@ -716,7 +720,7 @@ const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, 
                   fill={i === (props.activeTab || 0) ? (props.tabActiveColor || '#2196F3') : (props.textColor || '#000')}
                   fontSize={12}
                   fontStyle={i === (props.activeTab || 0) ? 'bold' : 'normal'}
-                  fontFamily="Arial"
+                  fontFamily={fontFamily}
                 />
                 {i === (props.activeTab || 0) && (
                   <Rect x={i * tabW} y={tabBarH - 3} width={tabW} height={3} fill={props.tabActiveColor || '#2196F3'} />
@@ -770,7 +774,7 @@ const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, 
                   verticalAlign="middle"
                   fill={props.textColor || '#000000'}
                   fontSize={13}
-                  fontFamily="Arial"
+                  fontFamily={fontFamily}
                 />
                 <Line points={[10, 40 + (i + 1) * itemH, props.width - 10, 40 + (i + 1) * itemH]} stroke="#F0F0F0" strokeWidth={1} />
               </React.Fragment>
@@ -796,7 +800,7 @@ const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, 
               fill={props.titleColor || '#FFFFFF'}
               fontSize={14}
               fontStyle="bold"
-              fontFamily="Arial"
+              fontFamily={fontFamily}
             />
             {/* Close button */}
             <Text text="✕" x={props.width - 30} y={0} width={20} height={props.headerHeight || 40} verticalAlign="middle" align="center" fill="#FFFFFF" fontSize={14} />
@@ -820,7 +824,7 @@ const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, 
                   verticalAlign="middle"
                   fill={props.textColor || '#000000'}
                   fontSize={props.fontSize || 14}
-                  fontFamily="Arial"
+                  fontFamily={fontFamily}
                 />
                 <Line points={[0, (i + 1) * listItemH, props.width, (i + 1) * listItemH]} stroke="#F0F0F0" strokeWidth={0.5} />
               </React.Fragment>
@@ -843,7 +847,7 @@ const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, 
               fill={props.titleColor || '#333333'}
               fontSize={16}
               fontStyle="bold"
-              fontFamily="Arial"
+              fontFamily={fontFamily}
             />
             {props.closeButton && (
               <Text text="✕" x={props.width - 30} y={10} width={20} height={20} align="center" fill="#666" fontSize={14} />
@@ -857,7 +861,7 @@ const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, 
               height={props.height - 90}
               fill={props.textColor || '#000000'}
               fontSize={props.fontSize || 14}
-              fontFamily="Arial"
+              fontFamily={fontFamily}
             />
             {/* Buttons */}
             {props.buttons && props.buttons.split('\n').map((btn, i) => {
@@ -902,7 +906,7 @@ const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, 
                     verticalAlign="middle"
                     fill={props.textColor || '#000000'}
                     fontSize={props.fontSize || 14}
-                    fontFamily="Arial"
+                    fontFamily={fontFamily}
                   />
                 </React.Fragment>
               ));
@@ -1007,7 +1011,7 @@ const WidgetRenderer = ({ widget, childrenByParent, selectedWidgetId, onSelect, 
                   width={props.width - 10}
                   fill={color}
                   fontSize={size}
-                  fontFamily="Arial"
+                  fontFamily={fontFamily}
                 />
               );
               yOff += size + 4;

@@ -423,6 +423,15 @@ const useStore = create((set, get) => ({
       },
     })),
 
+  /** Change editable fields of an asset (e.g. the extra characters of a font). */
+  updateAsset: (type, assetId, changes) =>
+    set((state) => ({
+      assets: {
+        ...state.assets,
+        [type]: state.assets[type].map((asset) => (asset.id === assetId ? { ...asset, ...changes, id: asset.id, name: asset.name } : asset)),
+      },
+    })),
+
   removeAsset: (type, assetId) =>
     set((state) => ({
       assets: { ...state.assets, [type]: state.assets[type].filter((asset) => asset.id !== assetId) },

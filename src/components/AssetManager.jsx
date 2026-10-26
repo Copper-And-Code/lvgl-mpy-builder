@@ -3,11 +3,23 @@ import useStore from '../core/store';
 import { Image, Type, Upload, Trash2, X, FileImage, FileText } from 'lucide-react';
 import '../styles/AssetManager.css';
 import { showConfirm } from '../core/dialogs';
+import useAssetFont from './useAssetFont';
+
+// Sample text in the uploaded font (the icon until the font is loaded)
+function FontSample({ name }) {
+  const family = useAssetFont(name);
+  return (
+    <div className="font-preview" style={family ? { fontFamily: family } : undefined}>
+      {family ? <span className="font-sample">AaBb 123</span> : <Type size={32} />}
+    </div>
+  );
+}
 
 function AssetManager({ onClose }) {
   const assets = useStore((state) => state.assets);
   const addAsset = useStore((state) => state.addAsset);
   const removeAsset = useStore((state) => state.removeAsset);
+  const updateAsset = useStore((state) => state.updateAsset);
   const [activeTab, setActiveTab] = useState('images');
   const fileInputRef = useRef(null);
 
@@ -33,11 +45,7 @@ function AssetManager({ onClose }) {
       }
     };
 
-    if (activeTab === 'images') {
-      reader.readAsDataURL(file);
-    } else {
-      reader.readAsDataURL(file);
-    }
+    reader.readAsDataURL(file);
 
     event.target.value = '';
   };
@@ -101,7 +109,7 @@ function AssetManager({ onClose }) {
             <input
               ref={fileInputRef}
               type="file"
-              accept={activeTab === 'images' ? 'image/*' : '.ttf,.otf,.woff,.woff2'}
+              accept={activeTab === 'images' ? 'image/*' : '.ttf,.otf,.woff'}
               onChange={handleFileUpload}
               style={{ display: 'none' }}
             />
@@ -123,9 +131,7 @@ function AssetManager({ onClose }) {
                     {activeTab === 'images' ? (
                       <img src={asset.data} alt={asset.name} />
                     ) : (
-                      <div className="font-preview">
-                        <Type size={32} />
-                      </div>
+                      <FontSample name={asset.name} />
                     )}
                   </div>
                   <div className="asset-info">
@@ -135,6 +141,16 @@ function AssetManager({ onClose }) {
                     <div className="asset-details">
                       {formatFileSize(asset.size)}
                     </div>
+                    {activeTab === 'fonts' && (
+                      <input
+                        className="asset-characters"
+                        aria-label={`Extra characters of ${asset.name}`}
+                        title="The generated font contains printable ASCII and the characters of the widgets using it; add the ones set at run time here (e.g. °€)"
+                        placeholder="Extra characters (e.g. °€)"
+                        value={asset.characters ?? ''}
+                        onChange={(e) => updateAsset('fonts', asset.id, { characters: e.target.value })}
+                      />
+                    )}
                   </div>
                   <button
                     className="btn-delete"

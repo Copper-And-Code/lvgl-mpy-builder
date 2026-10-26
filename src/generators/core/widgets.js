@@ -8,6 +8,9 @@
 import { enumMember, toInt, v } from './values';
 import { BINDABLE_WIDGETS, DEFAULT_LABEL_FORMAT } from '../../core/bindings';
 
+// LVGL's default font is Montserrat 14
+const DEFAULT_FONT_SIZE = 14;
+
 const ANIM_PROPS = { move_x: 'x', move_y: 'y', width: 'width', height: 'height', fade_in: 'opa', fade_out: 'opa' };
 
 class Ops {
@@ -71,9 +74,19 @@ class Ops {
     return this.set(`lv_obj_set_style_${prop}`, value, selector);
   }
 
+  /**
+   * Font of the given size: the widget's custom font (Asset Manager, see
+   * fonts.js) converted to that size, or the nearest Montserrat font.
+   */
+  fontValue(size) {
+    const custom = this.widget?.props?.font;
+    return v.font(size, custom ? this.context.font(custom, toInt(size, DEFAULT_FONT_SIZE), this.widget) : null);
+  }
+
+  /** Text font of `target`; without a size, only a custom font is set (at the default size). */
   font(size, target = this.self) {
-    if (size === undefined || size === null || size === '') return this;
-    return this.on(target, 'lv_obj_set_style_text_font', v.font(size), v.sel());
+    if (!has(size) && !this.widget?.props?.font) return this;
+    return this.on(target, 'lv_obj_set_style_text_font', this.fontValue(has(size) ? size : DEFAULT_FONT_SIZE), v.sel());
   }
 
   pos(props) {
@@ -543,13 +556,14 @@ const builders = {
     }
     if (p.mode === 'clip') b.set('lv_spangroup_set_overflow', v.enum('SPAN_OVERFLOW', 'CLIP'));
     b.style('bg_color', v.color(p.bgColor));
+    b.font(p.fontSize);
     lines(p.spans).forEach((definition, index) => {
       const [text = '', size, color] = definition.split('|').map((part) => part.trim());
       const span = b.assign(`${b.name}_span_${index + 1}`, 'lv_span_t *', 'lv_spangroup_add_span', b.self);
       b.on(v.ref(span), 'lv_span_set_text', v.str(text));
       const style = b.assign(`${span}_style`, 'lv_style_t *', 'lv_span_get_style', v.ref(span));
       b.on(v.ref(style), 'lv_style_set_text_color', v.color(color));
-      if (size) b.on(v.ref(style), 'lv_style_set_text_font', v.font(size));
+      if (size) b.on(v.ref(style), 'lv_style_set_text_font', b.fontValue(size));
     });
     b.set('lv_spangroup_refresh');
   },
@@ -666,11 +680,12 @@ function animationOps(b, animation) {
 /**
  * Build the operations of one widget.
  * @param {object} node - IR node: { widget, name, parentName }
- * @param {object} context - { temp(base), image(src), callbackFor(event) }
+ * @param {object} context - { temp(base), image(src), font(name, size, widget), variable(id), callbackFor(widget, event) }
  */
 export function buildWidgetOps(node, context) {
   const { widget, name, parentName } = node;
   const b = new Ops(context, name);
+  b.widget = widget;
   b.parent = parentName ? v.ref(parentName) : v.ref('parent');
   const props = widget.props ?? {};
   const build = builders[widget.type];

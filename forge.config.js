@@ -3,7 +3,7 @@ const { execSync } = require('node:child_process');
 
 // The renderer is bundled by Vite into dist/; the main process only needs
 // these runtime modules (Handlebars renders the code templates)
-const MAIN_PROCESS_MODULES = ['handlebars', 'minimist', 'neo-async', 'source-map', 'wordwrap'];
+const MAIN_PROCESS_MODULES = ['handlebars', 'minimist', 'neo-async', 'source-map', 'wordwrap', 'lv_font_conv'];
 
 const INCLUDED = [
   /^\/package\.json$/,

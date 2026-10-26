@@ -160,6 +160,29 @@ def my_ui_create(parent=None):
     button_1_label.center()
 ```
 
+## Data binding
+
+Le variabili sono valori interi condivisi tra interfaccia e applicazione, generati come *subject* dell'observer di LVGL:
+
+1. Clicca **Variables** nella toolbar e aggiungi una variabile (nome e valore iniziale).
+2. Seleziona uno slider, un arc, un dropdown, un roller, uno switch, una checkbox o una label e scegli la variabile in **Data binding** nel pannello delle proprietà. Le label accettano anche un formato printf, ad esempio `Livello: %d`.
+3. Il canvas mostra il valore iniziale; il codice generato tiene sincronizzati widget e variabile in entrambe le direzioni.
+
+## Font personalizzati
+
+1. Carica un font TTF, OTF o WOFF in **Assets → Fonts**. La scheda mostra un'anteprima del font.
+2. Seleziona un widget con **Font Size** e scegli il font in **Font** nel pannello delle proprietà. Il canvas disegna il testo con quel font.
+3. All'export l'editor converte il font con [lv_font_conv](https://github.com/lvgl/lv_font_conv), lo stesso convertitore che LVGL usa per i suoi font: un font per ogni dimensione usata (del widget, dello Style Editor, degli span), a 4 bpp e non compresso.
+
+Ogni font convertito contiene l'ASCII stampabile e i caratteri dei widget che lo usano. I caratteri impostati a runtime dall'applicazione (ad esempio `°` o `€`) vanno nel campo **Extra characters** della scheda del font. Un commento nel codice generato elenca i caratteri che il font non ha.
+
+| | C (LVGL 9.6) | MicroPython (lv_micropython) |
+|---|---|---|
+| Font | `const lv_font_t font_<nome>_<dimensione>` incluso nel file generato | font binario LVGL in base64, caricato con `lv.binfont_create_from_buffer()` |
+| Requisiti | nessuno | un firmware che esporti `binfont_create_from_buffer` (vedi sotto); altrimenti si usa il Montserrat più vicino |
+
+Il firmware lv_micropython di default non esporta il caricatore dei font binari, perché il binding è generato solo da `lvgl_private.h`. Per esportarlo, in `user_modules/lv_binding_micropython/micropython.mk` cambia la riga di preprocessing da `$(LVGL_DIR)/lvgl_private.h | ...` a `-include $(LVGL_DIR)/lvgl.h $(LVGL_DIR)/lvgl_private.h | ...` e ricompila il firmware (la CI compila e testa entrambe le varianti). I font binari compressi mandano in crash LVGL 9.3 quando vengono disegnati, quindi l'editor genera sempre font non compressi.
+
 ## Roadmap
 
 ### v1.0 (MVP) ✅

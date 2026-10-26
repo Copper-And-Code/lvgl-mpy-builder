@@ -58,11 +58,20 @@ jobs:
           git -C "$src/user_modules/lv_binding_micropython" submodule update --init --depth 1 lvgl pycparser
           make -C "$src/mpy-cross" -j"$(nproc)"
           make -C "$src/ports/unix" VARIANT=lvgl -j"$(nproc)"
+          # Second build with the binary font loader used by custom fonts (see the README)
+          cp -r "$src/ports/unix/build-lvgl" "$RUNNER_TEMP/build-lvgl-default"
+          sed -i 's#\$(LVGL_DIR)/lvgl_private.h |#-include $(LVGL_DIR)/lvgl.h $(LVGL_DIR)/lvgl_private.h |#' \
+            "$src/user_modules/lv_binding_micropython/micropython.mk"
+          rm -rf "$src/ports/unix/build-lvgl"
+          make -C "$src/ports/unix" VARIANT=lvgl -j"$(nproc)"
+          mv "$src/ports/unix/build-lvgl" "$RUNNER_TEMP/build-lvgl-binfont"
+          mv "$RUNNER_TEMP/build-lvgl-default" "$src/ports/unix/build-lvgl"
 
       - name: Compile and run the generated code on the latest versions
         env:
           LVGL_96_DIR: ${{ runner.temp }}/lvgl
           MICROPYTHON_LVGL: ${{ runner.temp }}/lv_micropython/ports/unix/build-lvgl/micropython
+          MICROPYTHON_LVGL_BINFONT: ${{ runner.temp }}/build-lvgl-binfont/micropython
           REQUIRE_TOOLCHAIN: '1'
         run: npx vitest run tests/toolchain.test.js
 
