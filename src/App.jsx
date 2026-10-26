@@ -48,7 +48,7 @@ function App() {
       <DialogHost />
 
       <footer className="status-bar">
-        <span>LVGL Visual Editor v3.0.0</span>
+        <span>LVGL Visual Editor v4.0.0</span>
         <span>Ready</span>
       </footer>
     </div>

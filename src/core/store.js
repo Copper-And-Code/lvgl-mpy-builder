@@ -441,7 +441,7 @@ const useStore = create((set, get) => ({
       assets: state.assets,
       componentLibrary: state.componentLibrary,
       targetArchitecture: state.targetArchitecture,
-      version: '3.0.0',
+      version: '4.0.0',
       createdAt: new Date().toISOString(),
     };
   },
